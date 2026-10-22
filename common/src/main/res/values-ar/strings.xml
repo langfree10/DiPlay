@@ -959,4 +959,32 @@
 
     <string name="settings_hotspot_interface">واجهة نقطة الاتصال (اختياري)</string>
     <string name="settings_hotspot_interface_description">لوحدات الرأس التي تشغّل نقطة الاتصال على واجهة شبكة لا يبلّغ عنها أندرويد كنقطة اتصال Wi-Fi، مثل eth0.3 في بعض وحدات Geely وLynk &amp; Co وغيرها من وحدات Qualcomm. اتركه فارغاً للعثور عليها تلقائياً.</string>
+    <string name="settings_usb_charging_data_only">طلب عدم الشحن (بيانات فقط)</string>
+    <string name="settings_usb_data_only_description">يرسل طلب عدم الشحن إلى iPhone عند اتصال USB التالي. قد يتجاهله الهاتف؛ لا يمكن للتطبيق قطع طاقة USB فعليًا. أعد الاتصال للتطبيق.</string>
+    <string name="settings_elantra_square_display">زوايا CarPlay مستقيمة</string>
+    <string name="settings_elantra_square_display_description">استخدام الشاشة المستطيلة بالكامل. مفعّل افتراضيًا في إلنترا هذه. أعد الاتصال للتطبيق.</string>
+    <string name="settings_siri_usb_reply_experimental">ردود Siri مع موسيقى بلوتوث (تجريبي)</string>
+    <string name="settings_siri_usb_reply_description">تبقى الموسيقى عبر بلوتوث ويصل صوت Siri عبر USB. مفعّل افتراضيًا لهذه إلنترا. أعد الاتصال للتطبيق. إذا تأثرت الموسيقى، عطّل هذا الخيار واترك صوت بلوتوث السيارة مفعّلًا.</string>
+    <string name="settings_report_to_usb">تصدير إلى محرك USB / مجلد</string>
+    <string name="settings_report_usb_description">اختر مجلدًا في محرك USB مرة واحدة للتصدير إليه مباشرة. لا حاجة لرمز QR أو شبكة. تُحفظ نسخة محلية.</string>
+    <string name="settings_report_usb_unavailable">لا تستطيع الوحدة فتح منتقي المجلدات. احفظ محليًا ثم انسخ التقرير من Download/DiPlay إلى USB باستخدام مدير الملفات.</string>
+    <string name="settings_report_usb_saved">تم الحفظ في المجلد المحدد: %1$s</string>
+    <string name="settings_report_usb_failed">تعذرت الكتابة إلى المجلد. النسخة المحلية في: %1$s. صِل محرك USB أو اختر مجلدًا آخر.</string>
+    <string name="settings_report_usb_reselect">اختيار مجلد آخر</string>
+    <string name="settings_video_codec_experimental">ترميز الفيديو (تجريبي)</string>
+    <string name="settings_video_h264">H.264 (التوافق)</string>
+    <string name="settings_video_hevc">تفضيل HEVC (H.265)</string>
+    <string name="settings_video_codec_hint">HEVC تفضيل وليس ضمانًا. يُستخدم H.264 دون دعم HEVC، وقد يختاره iPhone أيضًا. أعد الاتصال للتطبيق. لا يُضمن تقليل استهلاك الطاقة.</string>
+    <string name="settings_video_frame_rate_hint">قد يقلل معدل الإطارات الأقل عبء معالجة الصورة. هذه قيمة قصوى مطلوبة؛ يتغير المعدل الفعلي حسب الصورة. أعد الاتصال للتطبيق.</string>
+    <string name="settings_video_received">المستلم في آخر اتصال: %1$s</string>
+    <string name="settings_video_received_unknown">ترميز آخر اتصال: بانتظار الفيديو</string>
+    <string name="settings_usb_prompt_quality_experimental">جودة تنبيهات USB (تجريبي)</string>
+    <string name="settings_usb_prompt_compatible">متوافق</string>
+    <string name="settings_usb_prompt_clear">تفضيل الوضوح</string>
+    <string name="settings_usb_prompt_quality_description">يبقي الوضع المتوافق جميع تنسيقات التنبيه. يستبعد تفضيل الوضوح PCM بتردد 8/16 كيلوهرتز. يقدم خيار 48 كيلوهرتز PCM هذا التنسيق فقط إلى iPhone وقد لا يكون متوافقًا. أعد الاتصال للتطبيق؛ إذا اختفى الصوت، اختر تفضيل الوضوح أو متوافق.</string>
+    <string name="settings_usb_prompt_received">آخر تنبيه USB: %1$s كيلوهرتز · %2$s · %3$d قنوات</string>
+    <string name="settings_usb_prompt_received_unknown">لم يتم استلام تنسيق صوت تنبيه USB بعد. شغّل إرشاد ملاحة لعرضه.</string>
+    <string name="settings_usb_prompt_received_opus">آخر تنبيه USB: Opus · ساعة %1$s كيلوهرتز · فك الترميز %2$s كيلوهرتز · %3$d قنوات</string>
+    <string name="settings_usb_prompt_previous_connection">تم الاستلام في الاتصال السابق في %1$s؛ لم يتم استلام تنبيه في هذا الاتصال بعد.</string>
+    <string name="settings_usb_prompt_pcm_48">PCM بتردد 48 كيلوهرتز</string>
 </resources>

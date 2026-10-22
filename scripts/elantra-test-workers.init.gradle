@@ -1,0 +1,6 @@
+// Keep multi-SDK Robolectric heaps bounded on this local workstation; no test filters.
+allprojects {
+    tasks.withType(org.gradle.api.tasks.testing.Test).configureEach {
+        forkEvery = 40
+    }
+}

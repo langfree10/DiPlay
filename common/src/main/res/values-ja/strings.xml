@@ -1012,4 +1012,32 @@
 
     <string name="settings_hotspot_interface">ホットスポットのインターフェース（任意）</string>
     <string name="settings_hotspot_interface_description">Android が Wi-Fi ホットスポットとして報告しないネットワークインターフェースでホットスポットを動かすヘッドユニット専用です。一部の Geely、Lynk &amp; Co、その他の Qualcomm ユニットでは eth0.3 です。空欄のままにすると自動で検出します。</string>
+    <string name="settings_usb_charging_data_only">充電しないよう要求（データのみ）</string>
+    <string name="settings_usb_data_only_description">次の USB 接続時に iPhone へ充電停止を要求します。無視される場合があります。DiPlay は USB 給電を物理的に遮断できません。再接続後に適用。</string>
+    <string name="settings_elantra_square_display">CarPlay の角を直角にする</string>
+    <string name="settings_elantra_square_display_description">長方形の画面全体を使用します。このエラントラでは既定でオンです。再接続後に適用。</string>
+    <string name="settings_siri_usb_reply_experimental">Bluetooth 音楽中の Siri 応答（実験的機能）</string>
+    <string name="settings_siri_usb_reply_description">音楽は Bluetooth のまま、Siri 音声を USB で受信します。このエラントラでは既定でオンです。再接続後に適用。音楽に影響する場合はこの設定をオフにし、車の Bluetooth 音声をオンのままにしてください。</string>
+    <string name="settings_report_to_usb">USB メモリ／フォルダへ書き出す</string>
+    <string name="settings_report_usb_description">USB メモリのフォルダを一度選ぶと直接書き出せます。QR コードやネット接続は不要です。本体にもコピーを残します。</string>
+    <string name="settings_report_usb_unavailable">車載機でフォルダ選択画面を開けません。本体に保存し、ファイル管理アプリで Download/DiPlay のレポートを USB メモリへコピーしてください。</string>
+    <string name="settings_report_usb_saved">選択したフォルダに保存しました：%1$s</string>
+    <string name="settings_report_usb_failed">フォルダに書き込めません。本体のコピー：%1$s。USB メモリを接続するか、別のフォルダを選択してください。</string>
+    <string name="settings_report_usb_reselect">フォルダを選び直す</string>
+    <string name="settings_video_codec_experimental">映像エンコード（実験的機能）</string>
+    <string name="settings_video_h264">H.264（互換性優先）</string>
+    <string name="settings_video_hevc">HEVC 優先（H.265）</string>
+    <string name="settings_video_codec_hint">HEVC は優先設定であり強制ではありません。HEVC 非対応時は H.264 を使用し、iPhone が H.264 を選ぶ場合もあります。再接続後に適用。消費電力の低下は保証されません。</string>
+    <string name="settings_video_frame_rate_hint">低いフレームレートは映像処理の負荷を軽減できます。この値は要求する上限で、実際の値は映像によって変わります。再接続後に適用。</string>
+    <string name="settings_video_received">前回の接続で受信：%1$s</string>
+    <string name="settings_video_received_unknown">前回の接続のエンコード：映像を待機中</string>
+    <string name="settings_usb_prompt_quality_experimental">USB 案内音質（実験的機能）</string>
+    <string name="settings_usb_prompt_compatible">互換性優先</string>
+    <string name="settings_usb_prompt_clear">明瞭さ優先</string>
+    <string name="settings_usb_prompt_quality_description">互換性優先はすべての案内音形式を許可します。明瞭さ優先は 8/16 kHz PCM を除外します。48 kHz PCM はその形式のみを iPhone に提示するため、互換性がない場合があります。再接続後に適用されます。案内音が出なければ明瞭さ優先か互換性優先に戻してください。</string>
+    <string name="settings_usb_prompt_received">最後に受信した USB 案内音：%1$s kHz · %2$s · %3$d チャンネル</string>
+    <string name="settings_usb_prompt_received_unknown">USB 案内音声の形式はまだ受信していません。ナビ音声を再生すると表示されます。</string>
+    <string name="settings_usb_prompt_received_opus">最後の USB 案内音：Opus · クロック %1$s kHz · デコード %2$s kHz · %3$d チャンネル</string>
+    <string name="settings_usb_prompt_previous_connection">前回の接続で受信：%1$s。今回の接続では案内音声をまだ受信していません。</string>
+    <string name="settings_usb_prompt_pcm_48">48 kHz PCM</string>
 </resources>

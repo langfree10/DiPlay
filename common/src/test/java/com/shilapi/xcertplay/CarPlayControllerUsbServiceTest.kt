@@ -189,6 +189,61 @@ class CarPlayControllerUsbServiceTest {
         assertTrue(logs.none { it.contains("USB transition unanswered") })
     }
 
+    @Test fun replacementUsbNodeIsDiscoveredWithoutAnAttachBroadcast() {
+        val context = UsbContext(true)
+        val usb = context.getSystemService(UsbManager::class.java)
+        val before = usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/004")
+        val after = usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/005")
+        shadowOf(usb).addOrUpdateUsbDevice(before, true)
+        val logs = mutableListOf<String>()
+        val controller = waitingForReenumeration(context, logs)
+        ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
+            ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, before))
+        shadowOf(usb).removeUsbDevice(before)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(12))
+        assertTrue(logs.none { it.contains("permission already granted") })
+        shadowOf(usb).addOrUpdateUsbDevice(after, true)
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+        assertTrue(logs.any { it == "wired iPhone USB permission already granted" })
+    }
+
+    @Test fun elantraReplacementNodeIsPickedUpWithinTheShortPollWithoutWeakeningOldNodeSettling() {
+        val manufacturer = android.os.Build.MANUFACTURER; val model = android.os.Build.MODEL
+        try {
+            org.robolectric.shadows.ShadowBuild.setManufacturer("humaxdigital")
+            org.robolectric.shadows.ShadowBuild.setModel("BHCN-T3103C")
+            val context = UsbContext(true)
+            val usb = context.getSystemService(UsbManager::class.java)
+            val before = usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/004")
+            val after = usbDevice(0x05ac, 0x12a8, "/dev/bus/usb/001/005")
+            shadowOf(usb).addOrUpdateUsbDevice(before, true)
+            val logs = mutableListOf<String>()
+            val controller = waitingForReenumeration(context, logs)
+            ReflectionHelpers.callInstanceMethod<Unit>(controller, "watchReenumeration",
+                ReflectionHelpers.ClassParameter.from(UsbDevice::class.java, before))
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+            assertTrue("Old node must retain its safe settling window", logs.none { it.contains("permission already granted") })
+            shadowOf(usb).removeUsbDevice(before)
+            shadowOf(usb).addOrUpdateUsbDevice(after, true)
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(249))
+            assertTrue(logs.none { it.contains("permission already granted") })
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(1))
+            assertTrue(logs.any { it == "wired iPhone USB permission already granted" })
+        } finally {
+            org.robolectric.shadows.ShadowBuild.setManufacturer(manufacturer)
+            org.robolectric.shadows.ShadowBuild.setModel(model)
+        }
+    }
+
+    @Test fun connectionStagesReportElapsedTimesWithoutChangingTheStatusDelivery() {
+        val logs = mutableListOf<String>()
+        val controller = controller(UsbContext(false), CarPlayTransport.WIRED, MfiTarget.LOCAL, logs)
+        controller.start()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertTrue(statuses.single() is CarPlayStatus.Failed)
+        assertTrue(logs.any { it.contains("stage=Failed previousStageElapsedMs=") && it.contains("controllerElapsedMs=") })
+    }
+
     private fun waitingForReenumeration(context: Context, logs: MutableList<String>): CarPlayController {
         val controller = controller(context, CarPlayTransport.WIRED, MfiTarget.LOCAL, logs)
         ReflectionHelpers.setField(controller, "phase",

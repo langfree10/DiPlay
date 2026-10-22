@@ -1013,4 +1013,32 @@
 
     <string name="settings_hotspot_interface">Hotspot interface (optional)</string>
     <string name="settings_hotspot_interface_description">Only for head units that run their hotspot on a network interface Android does not report as a Wi-Fi hotspot, for example eth0.3 on some Geely, Lynk &amp; Co and other Qualcomm units. Leave empty to find it automatically.</string>
+    <string name="settings_usb_charging_data_only">Request no charging (data only)</string>
+    <string name="settings_usb_data_only_description">Sends a no-charging request to the iPhone at the next USB connection. The iPhone may ignore it; DiPlay cannot physically disconnect USB power. Reconnect to apply.</string>
+    <string name="settings_elantra_square_display">Square CarPlay corners</string>
+    <string name="settings_elantra_square_display_description">Uses the whole rectangular screen. Enabled by default on this Elantra. Reconnect to apply.</string>
+    <string name="settings_siri_usb_reply_experimental">Siri replies with Bluetooth music (experimental)</string>
+    <string name="settings_siri_usb_reply_description">Keeps music on Bluetooth and receives Siri voice over USB. Enabled by default on this Elantra. Reconnect to apply. If music is affected, turn this off and leave Car Bluetooth audio on.</string>
+    <string name="settings_report_to_usb">Export to USB drive / folder</string>
+    <string name="settings_report_usb_description">Select a folder on the USB drive once, then export there directly. No QR code or network is needed. A local copy is kept.</string>
+    <string name="settings_report_usb_unavailable">This head unit cannot open the folder picker. Save locally, then copy the report from Download/DiPlay to the USB drive using a file manager.</string>
+    <string name="settings_report_usb_saved">Saved in the selected folder: %1$s</string>
+    <string name="settings_report_usb_failed">Could not write to the selected folder. Local report kept at: %1$s. Connect the USB drive or select another folder.</string>
+    <string name="settings_report_usb_reselect">Select another folder</string>
+    <string name="settings_video_codec_experimental">Video encoding (experimental)</string>
+    <string name="settings_video_h264">H.264 (compatibility)</string>
+    <string name="settings_video_hevc">Prefer HEVC (H.265)</string>
+    <string name="settings_video_codec_hint">HEVC is a preference, not a guarantee. H.264 is used without HEVC support, and the iPhone may also choose H.264. Reconnect to apply. Lower power use is not guaranteed.</string>
+    <string name="settings_video_frame_rate_hint">Lower frame rates can reduce picture processing. This is the requested limit; actual frames vary with the picture. Reconnect to apply.</string>
+    <string name="settings_video_received">Last connection received: %1$s</string>
+    <string name="settings_video_received_unknown">Last connection encoding: waiting for video</string>
+    <string name="settings_usb_prompt_quality_experimental">USB prompt quality (experimental)</string>
+    <string name="settings_usb_prompt_compatible">Compatible</string>
+    <string name="settings_usb_prompt_clear">Clarity preferred</string>
+    <string name="settings_usb_prompt_quality_description">Compatible keeps all prompt formats. Clarity preferred excludes 8/16 kHz PCM. 48 kHz PCM offers only that prompt format to the iPhone and may be incompatible. Reconnect to apply; if prompts go silent, choose Clarity preferred or Compatible.</string>
+    <string name="settings_usb_prompt_received">Last USB prompt: %1$s kHz · %2$s · %3$d channels</string>
+    <string name="settings_usb_prompt_received_unknown">No USB prompt format received yet. Play a navigation prompt to show it.</string>
+    <string name="settings_usb_prompt_received_opus">Last USB prompt: Opus · %1$s kHz clock · %2$s kHz decoded · %3$d channels</string>
+    <string name="settings_usb_prompt_previous_connection">Received in the previous connection at %1$s; no prompt received in this connection yet.</string>
+    <string name="settings_usb_prompt_pcm_48">48 kHz PCM</string>
 </resources>

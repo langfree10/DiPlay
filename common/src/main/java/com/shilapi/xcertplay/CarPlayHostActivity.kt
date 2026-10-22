@@ -163,6 +163,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private var pendingDoubleSiri: PendingAssignedSiriDoublePress? = null
     private var delayedDoubleSiri: PendingAssignedSiriDoublePress? = null
     private val legacySiriPresses = mutableSetOf<Triple<Int, Int, Int>>()
+    private val elantraTrackPresses = ElantraTrackPresses()
     private val startupRetryBudget = WirelessStartupRetryBudget()
     private var startupRetryStopped = false
     private var startupRetryButton: View? = null
@@ -496,6 +497,7 @@ class CarPlayHostActivity : ComponentActivity() {
     private var displayScaleTenths = CarPlayDisplayScale.DEFAULT_TENTHS
     private var uiScalePercent = CarPlayUiScale.DEFAULT
     private var displayDiagnosticAttempt: String? = null
+    private var promptAudioDiagnosticAttempt: String? = null
     private var hevcEnabled = true
     private var hevcSoftwareDecoderEnabled = false
     private val hevcDecoders by lazy { HevcSupport.decoders() }
@@ -1713,18 +1715,33 @@ class CarPlayHostActivity : ComponentActivity() {
         // Steering-wheel next/previous, claimed by the CarPlay screen itself. BYD gives these keys to
         // whichever window is in front, and this is the only route that reaches CarPlay without the
         // wheel key service — which a head unit with no ADB cannot turn on at all.
+        val elantra = com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()
+        if (elantra) {
+            val result = elantraTrackPresses.onKey(event, activeAirPlaySession != null, calling)
+            if (result != ElantraTrackPresses.Result.PASS) {
+                if (result == ElantraTrackPresses.Result.SEND) {
+                    val press = CarPlayMediaButton.forKeyCode(event.keyCode, elantraKeys = true)!!
+                    val delivery = ElantraTrackCommands.send(controller, press, ElantraTrackRoute.WINDOW)
+                    appendLog("Media: wheel key ${event.keyCode} -> CarPlay $press delivery=$delivery route=window " +
+                        "device=${event.deviceId} scan=${event.scanCode} down=${event.downTime} event=${event.eventTime}")
+                }
+                return true
+            }
+        }
         val mediaPress = CarPlayMediaButton.forCarPlayWindow(
             event.keyCode,
             sessionActive = activeAirPlaySession != null,
             inCall = inCall(this),
+            elantraKeys = com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported(),
+            nativeBluetoothAudio = !elantra && AirPlayPersistence.loadCarBluetoothAudio(this),
         )
         if (downOrUp && mediaPress != null) {
-            // A media button is a tap, and BYD sends each tap as an instant down/up pair: send once,
-            // on the press. The release is swallowed rather than passed on, or BYD's own player would
-            // receive an unpaired key.
-            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
-                val sent = controller?.sendMediaButton(mediaPress) == true
-                appendLog("Media: wheel key ${event.keyCode} -> CarPlay $mediaPress sent=$sent")
+            // Consume both edges. Elantra follows third-party CarLife's release-based 274/275
+            // handling; standard media keys keep their existing press-based behavior.
+            if (CarPlayMediaButton.sendsOnEvent(event, com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported())) {
+                val delivery = ElantraTrackCommands.send(controller, mediaPress, ElantraTrackRoute.WINDOW)
+                appendLog("Media: wheel key ${event.keyCode} -> CarPlay $mediaPress delivery=$delivery route=window " +
+                    "device=${event.deviceId} scan=${event.scanCode} down=${event.downTime} event=${event.eventTime}")
             }
             return true
         }
@@ -2865,6 +2882,8 @@ class CarPlayHostActivity : ComponentActivity() {
             ).apply { topMargin = dp(14) },
         )
 
+        val hotspotStatusView = menuText("", 16f, MENU_ACCENT)
+        if (!com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) {
         val wirelessRowResult = ConnectionSettingsSection.createWirelessCarPlayRow(
             context = this,
             checked = wirelessEnabled,
@@ -2903,7 +2922,6 @@ class CarPlayHostActivity : ComponentActivity() {
                 ViewGroup.LayoutParams.WRAP_CONTENT,
             ).apply { topMargin = dp(18) },
         )
-        val hotspotStatusView = menuText("", 16f, MENU_ACCENT)
         content.addView(
             hotspotStatusView,
             LinearLayout.LayoutParams(
@@ -2912,6 +2930,7 @@ class CarPlayHostActivity : ComponentActivity() {
             ).apply { topMargin = dp(6) },
         )
 
+        }
         content.addView(
             settingsCategoryHeader(getString(R.string.automatic_connection)),
             LinearLayout.LayoutParams(
@@ -3080,26 +3099,38 @@ class CarPlayHostActivity : ComponentActivity() {
             ).apply { topMargin = dp(16) },
         )
 
-        val hevcRow = DisplaySettingsSection.createHevcRow(
-            context = this,
-            checked = hevcEnabled,
-            theme = settingsOverlayTheme,
-        ) { checked ->
-            if (hevcEnabled == checked) return@createHevcRow
-            hevcEnabled = checked
-            appendLog(
-                "HEVC (H.265) ${if (hevcEnabled) "enabled" else "disabled"}; " +
-                    "applies when settings close",
-            )
-            updateResolutionMenu()
+        val hevcRow = if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) {
+            settingsChoiceRow(
+                label = getString(R.string.settings_video_codec_experimental),
+                options = listOf(false to getString(R.string.settings_video_h264), true to getString(R.string.settings_video_hevc)),
+                selected = hevcEnabled,
+            ) { selected ->
+                hevcEnabled = selected
+                updateResolutionMenu()
+            }
+        } else {
+            DisplaySettingsSection.createHevcRow(
+                context = this,
+                checked = hevcEnabled,
+                theme = settingsOverlayTheme,
+            ) { checked ->
+                if (hevcEnabled == checked) return@createHevcRow
+                hevcEnabled = checked
+                appendLog("HEVC (H.265) ${if (hevcEnabled) "enabled" else "disabled"}; applies when settings close")
+                updateResolutionMenu()
+            }.rowView
         }
         pageFor("advanced").addView(
-            hevcRow.rowView,
-            LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(30) },
+            hevcRow,
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = dp(VIDEO_SETTINGS_GAP_DP) },
         )
+        if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) {
+            pageFor("advanced").addView(menuText(getString(R.string.settings_video_codec_hint), 14f, MENU_SECONDARY))
+            val received = DisplayDiagnosticSnapshot.lastReceivedCodec(this)
+            pageFor("advanced").addView(menuText(if (received == null) getString(R.string.settings_video_received_unknown)
+                else getString(R.string.settings_video_received, received), 14f, MENU_SECONDARY))
+        }
 
         val softwareHevcRow = DisplaySettingsSection.createSoftwareHevcRow(
             context = this,
@@ -4968,6 +4999,7 @@ class CarPlayHostActivity : ComponentActivity() {
             "physical=${physical.widthMm}x${physical.heightMm}mm safeArea=${display.safeArea} " +
             "drawOutside=${display.safeAreaDrawOutside}"
         displayDiagnosticAttempt = DisplayDiagnosticSnapshot.begin(this, requestSummary, support.details, effectiveSummary)
+        promptAudioDiagnosticAttempt = PromptAudioDiagnosticSnapshot.begin(this)
         appendLog(requestSummary)
         if (hevcEnabled && !sessionHevc) {
             appendLog("HEVC is on, but no hardware decoder plays it (${hevcDecoders.joinToString { it.name }.ifEmpty { "none" }}); " +
@@ -4975,8 +5007,15 @@ class CarPlayHostActivity : ComponentActivity() {
         }
         appendLog(support.details)
         appendLog(effectiveSummary)
+        appendLog("USB prompt quality offer=${AirPlayPersistence.loadUsbPromptQuality(this)}; actual format reported separately")
         val carBluetoothAudio = AirPlayPersistence.loadCarBluetoothAudio(this)
         if (carBluetoothAudio) logCarBluetoothAudio()
+        if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) {
+            appendLog("Elantra third-party profile: select native Bluetooth audio with MODE; " +
+                "carBluetoothTransport=$carBluetoothAudio " +
+                "rendererFocus=${AirPlayPersistence.loadAudioFocusEnabled(this)} " +
+                "mediaKeyFocusDisabled=${AirPlayPersistence.loadDisableMediaKeyAudioFocus(this)}; foreground keys 274/275")
+        }
         return AirPlayConfig(
             deviceName = "DiPlay",
             deviceId = DiPlayBootstrap.deviceId(airPlayIdentity),
@@ -4995,33 +5034,15 @@ class CarPlayHostActivity : ComponentActivity() {
             videoInCar = com.shilapi.xcertplay.hud.BydOutputSettings.videoWhileParkedActive(this),
             mainBufferedAudio = AirPlayPersistence.loadMainBufferedAudio(this),
             speechWithout8And16Khz = AirPlayPersistence.loadSpeechWithout8And16Khz(this),
+            promptPcm48KhzOnly = AirPlayPersistence.loadUsbPromptQuality(this) == UsbPromptQuality.PCM_48_KHZ,
             disableAudioOutput = carBluetoothAudio,
+            bluetoothVoiceAudio = carBluetoothAudio && AirPlayPersistence.loadElantraBluetoothVoice(this),
         )
     }
 
-    /** Car Bluetooth audio: shows whether the iPhone keeps A2DP/HFP with the car now and once CarPlay runs. */
+    /** Receiver-role profile events are captured for the matching controller by CarBluetoothDiagnostics. */
     private fun logCarBluetoothAudio() {
-        appendLog("Car Bluetooth audio: on; CarPlay audio not offered")
-        val adapter = runCatching { getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter ?: android.bluetooth.BluetoothAdapter.getDefaultAdapter() }.getOrNull()
-            ?: return appendLog("Car Bluetooth audio: no Bluetooth adapter")
-        fun probe(moment: String) {
-            for ((name, profile) in listOf("A2DP" to android.bluetooth.BluetoothProfile.A2DP,
-                    "HFP" to android.bluetooth.BluetoothProfile.HEADSET)) {
-                runCatching {
-                    adapter.getProfileProxy(applicationContext, object : android.bluetooth.BluetoothProfile.ServiceListener {
-                        override fun onServiceConnected(id: Int, proxy: android.bluetooth.BluetoothProfile) {
-                            val devices = runCatching { proxy.connectedDevices.map { it.name ?: "?" } }
-                                .getOrElse { listOf("unreadable:${it.javaClass.simpleName}") }
-                            appendLog("Car Bluetooth audio: $moment $name connected=$devices")
-                            adapter.closeProfileProxy(id, proxy)
-                        }
-                        override fun onServiceDisconnected(id: Int) = Unit
-                    }, profile)
-                }.onFailure { appendLog("Car Bluetooth audio: $moment $name unavailable ${it.javaClass.simpleName}") }
-            }
-        }
-        probe("start")
-        mainHandler.postDelayed({ if (!isDestroyed) probe("after30s") }, 30_000L)
+        appendLog("Car Bluetooth audio: on; music stays native; USB voice=${AirPlayPersistence.loadElantraBluetoothVoice(this)}; A2DP sink and HFP client events in wheel diagnostics")
     }
 
     private fun loadAirPlayIcon(): AirPlayIcon {
@@ -5046,7 +5067,7 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun defaultAirPlayIconBytes(): ByteArray =
         // Shown in CarPlay's app list as the "back to the car" button.
-        resources.openRawResource(R.raw.ic_car_home).use { it.readBytes() }
+        ElantraCarIcon.defaultBytes(this)
 
     private fun updateAirPlayIconPreview() {
         val preview = iconPreviewView ?: return
@@ -5058,7 +5079,7 @@ class CarPlayHostActivity : ComponentActivity() {
                 AirPlayPersistence.clearCustomAirPlayIcon(this)
             }
         }
-        val bitmap = customBitmap ?: BitmapFactory.decodeResource(resources, R.raw.placeholder_icon)
+        val bitmap = customBitmap ?: ElantraCarIcon.preview(this)
         preview.setImageBitmap(bitmap)
         iconStatusView?.text =
             if (customBitmap != null) getString(R.string.custom_1_1_icon) else getString(R.string.default_placeholder_icon)
@@ -5186,6 +5207,9 @@ class CarPlayHostActivity : ComponentActivity() {
     ): AndroidMediaSink {
         // Capture this session's log: late decoder shutdown must not write into a new session.
         val diagnosticLog = sessionLog
+        val videoAttempt = displayDiagnosticAttempt
+        val promptAttempt = promptAudioDiagnosticAttempt
+        val diagnosticContext = applicationContext
         return AndroidMediaSink(
             surface = null,
             videoWidth = videoWidth,
@@ -5211,6 +5235,12 @@ class CarPlayHostActivity : ComponentActivity() {
                 }
             },
             onMediaAudioChanged = CarPlayMediaKeys::onMediaAudioChanged,
+            bluetoothVoiceAudio = AirPlayPersistence.loadCarBluetoothAudio(this) &&
+                AirPlayPersistence.loadElantraBluetoothVoice(this),
+            temporaryAssistantFocus = AirPlayPersistence.loadElantraBluetoothVoice(this),
+            onPromptAudioFormat = { format ->
+                PromptAudioDiagnosticSnapshot.record(diagnosticContext, promptAttempt, format)
+            },
             callEchoCancellation = AirPlayPersistence.loadCallEchoCancellation(this),
             callVoiceFilter = AirPlayPersistence.loadCallVoiceFilter(this),
             callSpeakerphone = { AirPlayPersistence.loadCallSpeakerphone(this) },
@@ -5219,6 +5249,7 @@ class CarPlayHostActivity : ComponentActivity() {
             mainVideoFrameRate = fps,
             vendorLowLatencyDecoder = AirPlayPersistence.loadLowLatencyDecoder(this),
             mtkDecoderTuningEnabled = AirPlayPersistence.loadMtkDecoderTuning(this),
+            onMainVideoCodec = { codec -> DisplayDiagnosticSnapshot.recordReceivedCodec(diagnosticContext, videoAttempt, codec) },
         )
     }
 
@@ -5232,6 +5263,42 @@ class CarPlayHostActivity : ComponentActivity() {
     private fun createSessionListener(controllerGeneration: Int): AirPlaySessionListener =
         object : AirPlaySessionListener {
             private val diagnosticLog = sessionLog
+            private var voiceFocusRevision = 0
+            private var voiceReturn: ElantraVoiceSourceReturn? = null
+            private var voiceOwner: AirPlaySession? = null
+            private fun voiceReturnFor(session: AirPlaySession): ElantraVoiceSourceReturn {
+                if (voiceOwner === session) return checkNotNull(voiceReturn)
+                voiceReturn?.close()
+                voiceOwner = session
+                return ElantraVoiceSourceReturn.create(this@CarPlayHostActivity,
+                    ownerActive = { controllerGeneration == restartGeneration && !shuttingDown.get() &&
+                        activeAirPlaySession === session && CarPlayBackgroundSession.isOwner(this@CarPlayHostActivity) },
+                    report = { appendLog(it) },
+                    voiceActiveChanged = { active ->
+                        val revision = ++voiceFocusRevision
+                        val apply = {
+                            if (controllerGeneration == restartGeneration && revision == voiceFocusRevision &&
+                                activeAirPlaySession === session) sink?.setAssistantSpeechActive(active)
+                        }
+                        if (active) apply() else mainHandler.postDelayed({ apply() }, 300L)
+                    }).also { voiceReturn = it }
+            }
+
+            private fun clearVoiceReturn() {
+                voiceReturn?.close()
+                voiceReturn = null; voiceOwner = null; voiceFocusRevision++
+                sink?.setAssistantSpeechActive(false)
+            }
+
+            override fun onCommand(session: AirPlaySession, type: String, params: Map<String, Any?>) {
+                if (!com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() || type != "modesChanged") return
+                runOnUiThread {
+                    if (controllerGeneration == restartGeneration && activeAirPlaySession === session && !shuttingDown.get()) {
+                        appendLog("Elantra voice modes appStates=${params["appStates"]} resources=${params["resources"]}")
+                        voiceReturnFor(session).modes(params)
+                    }
+                }
+            }
 
             override fun onCornerMask(session: AirPlaySession, png: ByteArray, displayWidth: Int) {
                 runOnUiThread {
@@ -5249,6 +5316,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     if (controllerGeneration != restartGeneration) {
                         return@runOnUiThread
                     }
+                    if (voiceOwner != null && voiceOwner !== session) clearVoiceReturn()
                     activeAirPlaySession = session
                     val pending = pendingIphoneCornerMask
                     if (pending?.first === session) {
@@ -5295,6 +5363,7 @@ class CarPlayHostActivity : ComponentActivity() {
                         return@runOnUiThread
                     }
                     if (controllerGeneration != restartGeneration || startupRetryStopped) return@runOnUiThread
+                    clearVoiceReturn()
                     startupRetryBudget.disconnected()
                     activeAirPlaySession = null
                     clearIphoneCornerMask()
@@ -5410,6 +5479,7 @@ class CarPlayHostActivity : ComponentActivity() {
             return false
         }
         displayDiagnosticAttempt = DisplayDiagnosticSnapshot.currentAttempt(this)
+        promptAudioDiagnosticAttempt = PromptAudioDiagnosticSnapshot.currentAttempt(this)
         adbClusterConfigured = AdbClusterRouter.enabled(this) && snapshot.controller.configuredClusterSize() ==
             (DiLink4ClusterDisplay.STREAM_WIDTH to DiLink4ClusterDisplay.STREAM_HEIGHT)
         controller = snapshot.controller
@@ -6759,6 +6829,7 @@ class CarPlayHostActivity : ComponentActivity() {
         const val SWIPE_CONTENT_TOP_PADDING_DP = 16
         const val SWIPE_CONTENT_BOTTOM_PADDING_DP = 36
         const val SWIPE_ACTION_HEIGHT_DP = 52
+        private const val VIDEO_SETTINGS_GAP_DP = 30
         const val SWIPE_ACTION_GAP_DP = 8
         const val SWIPE_CATEGORY_ACTION_HEIGHT_DP = 48
         const val SWIPE_CATEGORY_RAIL_WIDTH_DP = 208

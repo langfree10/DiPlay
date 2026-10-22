@@ -45,7 +45,10 @@ internal class AudioFocusCoordinator(
     private val enabled: Boolean,
     private val muteMediaOnTransientLoss: Boolean = true,
     private val report: (String) -> Unit = {},
+    val assistantOnly: Boolean = false,
+    val voiceStreamsOnly: Boolean = assistantOnly,
 ) {
+    private var assistantActive = !assistantOnly
     private data class Entry(val channel: AudioChannel, val attributes: AudioAttributes, var appliedVolume: Float = FULL_VOLUME)
 
     private val manager = context?.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
@@ -91,7 +94,9 @@ internal class AudioFocusCoordinator(
 
     @Synchronized
     fun acquire(track: AudioTrack, channel: AudioChannel, attributes: AudioAttributes) {
-        if (closed || !enabled || manager == null || channel == AudioChannel.NAVIGATION) return
+        if (closed || manager == null || channel == AudioChannel.NAVIGATION ||
+            (assistantOnly && channel != AudioChannel.ASSISTANT) ||
+            (!enabled && !(assistantOnly && channel == AudioChannel.ASSISTANT))) return
         active[track] = Entry(channel, attributes)
         refreshRequest()
         applyMediaVolume(track, active.getValue(track))
@@ -115,8 +120,16 @@ internal class AudioFocusCoordinator(
         refreshRequest()
     }
 
+    @Synchronized fun setAssistantActive(active: Boolean) {
+        if (assistantActive == active || closed) return
+        assistantActive = active
+        runCatching { report("Audio: assistant window active=$active temporaryFocus=$assistantOnly eligibleTracks=${this.active.size}") }
+        refreshRequest()
+    }
+
     private fun refreshRequest() {
-        val primary = active.values.maxByOrNull { it.channel.focusPriority() }
+        val primary = active.values.filter { !assistantOnly || it.channel != AudioChannel.ASSISTANT || assistantActive }
+            .maxByOrNull { it.channel.focusPriority() }
         if (primary == null) {
             focusGeneration += 1
             val abandoned = request
@@ -219,9 +232,15 @@ class AndroidMediaSink(
     private val vendorLowLatencyDecoder: Boolean = false,
     /** Opt-in MTK ACodec low-latency/no-reorder modes, with per-session automatic fallback. */
     private val mtkDecoderTuningEnabled: Boolean = false,
+    private val bluetoothVoiceAudio: Boolean = false,
+    private val onMainVideoCodec: (VideoCodec) -> Unit = {},
+    /** Elantra's USB Siri tracks need temporary focus even when native Bluetooth music is not selected in settings. */
+    private val temporaryAssistantFocus: Boolean = false,
+    private val onPromptAudioFormat: (AudioFormat) -> Unit = {},
 ) : MediaSink {
     // Each downlink publishes its own reference; a mic must match that stream and sample rate.
     private val callEchoReferences = ConcurrentHashMap<AudioStreamId, EchoReference>()
+    private var promptAudioObservationClosed = false
     private val appContext = context?.applicationContext
     private val ambientSinkToken = AmbientMusicController.openSink(appContext)
     private val audioManager = appContext?.getSystemService(AudioManager::class.java)
@@ -230,7 +249,12 @@ class AndroidMediaSink(
         audioFocusEnabled,
         audioFocusAutoYield,
         onAudioDiagnostic,
+        assistantOnly = bluetoothVoiceAudio || (temporaryAssistantFocus && !audioFocusEnabled),
+        voiceStreamsOnly = bluetoothVoiceAudio,
     )
+
+    /** Streams may be reused between Siri turns; release temporary focus even without TEARDOWN. */
+    fun setAssistantSpeechActive(active: Boolean) = audioFocusCoordinator.setAssistantActive(active)
 
     /** The media-key session may own Android's current focus request for this same sink. */
     fun onMediaAudioFocusChanged(change: Int) {
@@ -457,7 +481,10 @@ class AndroidMediaSink(
 
     override fun onVideoCodec(type: Int, codec: VideoCodec) {
         synchronized(videoOwnershipLock) {
-            if (!videoClosed) pendingVideoCodec[type] = codec
+            if (videoClosed) return
+            pendingVideoCodec[type] = codec
+            if (type == MAIN_SCREEN_TYPE) runCatching { onMainVideoCodec(codec) }
+                .onFailure { Log.w("xcertplay-usb", "Video codec diagnostics unavailable", it) }
         }
     }
 
@@ -628,6 +655,7 @@ class AndroidMediaSink(
     }
 
     fun close() {
+        synchronized(this) { promptAudioObservationClosed = true }
         AmbientMusicController.closeSink(ambientSinkToken)
         synchronized(videoOwnershipLock) {
             videoClosed = true
@@ -726,6 +754,9 @@ class AndroidMediaSink(
             it.setNavigationAttenuationDb(navigationAttenuationDb)
             if (format.audioType == TELEPHONY_AUDIO_TYPE) it.onRoutedToEarpiece = { moveCallToLoudspeaker(id) }
             audioRenderers[id] = it
+            if (!promptAudioObservationClosed && format.audioType.lowercase(java.util.Locale.ROOT) in setOf("default", "alert")) {
+                runCatching { onPromptAudioFormat(format) }
+            }
             // Cover a Settings change made while this renderer was being prepared.
             it.setNavigationAttenuationDb(navigationAttenuationDb)
         }
@@ -1747,6 +1778,8 @@ private class AudioRenderer(
     private data class AudioPacket(val rtp: ByteArray, val sample: Int)
 
     private val pcmChannels = if (format.channels >= 2) 2 else 1
+    private val assistantOutputSignal = if (format.audioType.equals("speechrecognition", ignoreCase = true))
+        AssistantOutputSignal() else null
     private val voiceFilter = if (voiceFilter && format.sampleRate > 0) VoiceFilter(format.sampleRate, pcmChannels) else null
 
     private var trackAttributes: AudioAttributes? = null
@@ -2102,15 +2135,15 @@ private class AudioRenderer(
             // map these standard streams to vehicle outputs; arbitrary channel numbers are
             // not valid AudioAttributes legacy stream types.
             try {
-                return AudioAttributes.Builder().setLegacyStreamType(streamOverride).build()
+                return ElantraAudioCompatibility.attributes(AudioAttributes.Builder().setLegacyStreamType(streamOverride).build())
             } catch (error: Exception) {
                 Log.w(TAG, "legacy audio stream $streamOverride rejected; keeping usage routing", error)
             }
         }
-        return AudioAttributes.Builder()
+        return ElantraAudioCompatibility.attributes(AudioAttributes.Builder()
             .setUsage(usageFor(selection.channel))
             .setContentType(contentTypeFor(selection.contentType))
-            .build()
+            .build())
     }
 
     private fun mappedSelection(): AudioChannelSelection {
@@ -2119,6 +2152,8 @@ private class AudioRenderer(
         } else {
             AudioChannelMappingMode.MOBILE_COMPATIBLE
         }
+        if (audioFocusCoordinator.voiceStreamsOnly && format.audioType in setOf("speechrecognition", "default", "alert"))
+            return AudioChannelSelection(AudioChannel.ASSISTANT, AudioContentType.SPEECH)
         val selection = AudioChannelMapper.map(
             audioType = format.audioType,
             payloadType = format.payloadType,
@@ -2128,10 +2163,10 @@ private class AudioRenderer(
     }
 
     private fun audioAttributesFor(selection: AudioChannelSelection): AudioAttributes =
-        AudioAttributes.Builder()
+        ElantraAudioCompatibility.attributes(AudioAttributes.Builder()
             .setUsage(usageFor(selection.channel))
             .setContentType(contentTypeFor(selection.contentType))
-            .build()
+            .build())
 
     /**
      * Shares a sink-level focus request across all active non-navigation renderers.
@@ -2410,6 +2445,7 @@ private class AudioRenderer(
                 break
             }
             if (count < writeLength) partialWritesThisWindow++
+            assistantOutputSignal?.observe(data, offset + written, count)
             val framesWritten = count / frameBytes
             if (ambientMedia && AmbientMusicController.wantsPcm(ambientRendererToken)) {
                 ambientEnvelope.append(totalWrittenFrames, framesWritten.toLong(),
@@ -2555,6 +2591,11 @@ private class AudioRenderer(
             "playbackRate=${clockTrim?.rate ?: -1} ended=$force"
         Log.i(STATS_TAG, line)
         report(line)
+        assistantOutputSignal?.let { signal ->
+            runCatching { report("Audio: assistant output rate=${format.sampleRate} channels=${format.channels} " +
+                "usage=${trackAttributes?.usage} contentType=${trackAttributes?.contentType} " +
+                "${signal.reportAndReset()} ended=$force") }
+        }
         if (format.codec != AudioCodecKind.LPCM) {
             // Keep this separate: the exported diagnostic recorder caps each line at 700 characters.
             val decoderLine = "Audio: decoder stats audioType=${format.audioType} codec=${format.codec} " +

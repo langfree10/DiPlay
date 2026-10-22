@@ -1,5 +1,11 @@
 # Credits and license notices
 
+## Elantra fork and Hyundai vehicle-button artwork
+
+This Elantra adaptation is maintained in [langfree10/DiPlay](https://github.com/langfree10/DiPlay), directly forked from [shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay). The adaptation baseline is upstream 0.2.21, commit `6d3b8a8ce927cb4b115b8c3881f17619433e93b1`. All upstream notices below are retained.
+
+`common/src/main/res/raw/hyundai_wordmark.png` is Hyundai website artwork used to identify the vehicle button on the Elantra profile. The Hyundai name and emblem are Hyundai Motor Company marks; this artwork is separate from the project code license. This fork is independent and does not imply Hyundai endorsement. The third-party CarLife application inspected for interoperability is not distributed as part of this source tree.
+
 ## Receiver
 
 DiPlay is a modified version of [xcertplay by shilapi](https://github.com/shilapi/xcertplay). The upstream receiver is licensed under GNU GPL version 3; the full text is in `LICENSE` and the original README is retained in `docs/UPSTREAM-README.md`.

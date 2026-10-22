@@ -158,6 +158,53 @@ class AudioFocusAutoYieldTest {
         assertTrue(volumes(late).isEmpty())
     }
 
+    @Test fun voiceOnlyOverridesDisabledMusicFocusAndReleasesPersistentSpeechTrackAtIdle() {
+        val diagnostics = mutableListOf<String>()
+        val coordinator = AudioFocusCoordinator(context, false, true, diagnostics::add, assistantOnly = true).also(coordinators::add)
+        val media = track(); val voice = track(); val phone = track()
+        coordinator.acquire(media, AudioChannel.MEDIA, attributes)
+        coordinator.acquire(phone, AudioChannel.PHONE, attributes)
+        assertTrue(diagnostics.isEmpty())
+        coordinator.acquire(voice, AudioChannel.ASSISTANT, attributes)
+        assertTrue("A pre-opened Siri track must not interrupt Bluetooth music", diagnostics.isEmpty())
+        coordinator.setAssistantActive(true)
+        assertTrue(diagnostics.single { it.contains("focus requested") }.contains("channel=ASSISTANT gain=${AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK}"))
+        coordinator.setAssistantActive(false)
+        if (android.os.Build.VERSION.SDK_INT >= 26)
+            assertNotNull(shadowOf(manager).lastAbandonedAudioFocusRequest)
+        else assertSame(shadowOf(manager).lastAudioFocusRequest.listener, shadowOf(manager).lastAbandonedAudioFocusListener)
+        coordinator.setAssistantActive(true)
+        assertEquals(2, diagnostics.count { it.contains("focus requested") })
+        coordinator.close()
+        coordinator.setAssistantActive(true)
+        coordinator.acquire(track(), AudioChannel.ASSISTANT, attributes)
+        assertEquals(2, diagnostics.count { it.contains("focus requested") })
+        assertTrue(volumes(media).isEmpty())
+        assertTrue(volumes(phone).isEmpty())
+    }
+
+    @Test fun fullUsbAudioCanUseTemporarySiriFocusWithoutChangingMusicNavigationOrPhoneRouting() {
+        val diagnostics = mutableListOf<String>()
+        val coordinator = AudioFocusCoordinator(context, false, true, diagnostics::add,
+            assistantOnly = true, voiceStreamsOnly = false).also(coordinators::add)
+        val media = track(); val voice = track(); val navigation = track(); val phone = track()
+        coordinator.acquire(media, AudioChannel.MEDIA, attributes)
+        coordinator.acquire(navigation, AudioChannel.NAVIGATION, attributes)
+        coordinator.acquire(phone, AudioChannel.PHONE, attributes)
+        coordinator.acquire(voice, AudioChannel.ASSISTANT, attributes)
+        assertFalse(coordinator.voiceStreamsOnly)
+        assertTrue(diagnostics.isEmpty())
+        repeat(2) {
+            coordinator.setAssistantActive(true)
+            coordinator.setAssistantActive(true)
+            assertEquals(it + 1, diagnostics.count { line -> line.contains("focus requested channel=ASSISTANT") })
+            coordinator.setAssistantActive(false)
+        }
+        assertTrue(volumes(media).isEmpty())
+        assertTrue(volumes(navigation).isEmpty())
+        assertTrue(volumes(phone).isEmpty())
+    }
+
     private fun coordinator(enabled: Boolean = true, autoYield: Boolean = true) =
         AudioFocusCoordinator(context, enabled, autoYield).also(coordinators::add)
     private fun track(): AudioTrack = AudioTrack.Builder().setAudioAttributes(attributes)

@@ -79,6 +79,9 @@ internal object CarPlayMediaKeys {
         }
         appContext = context.applicationContext
         controller = next
+        CarBluetoothDiagnostics.stop()
+        if (AirPlayPersistence.loadCarBluetoothAudio(context) ||
+            com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) CarBluetoothDiagnostics.start(context, next)
         GeelyWheelKeys.start(context)
         com.shilapi.xcertplay.media.AmbientMusicController.claimPlaybackOwner(next)
         next.playbackListener = { playing ->
@@ -277,6 +280,9 @@ internal object CarPlayMediaKeys {
     private fun updateLocked(active: Boolean) {
         val context = appContext ?: return
         if (controller == null) return
+        // AVRCP and volume belong to the OEM Bluetooth player in this mode. A late or
+        // unsolicited CarPlay audio callback must not replace its MediaSession/focus owner.
+        if (AirPlayPersistence.loadCarBluetoothAudio(context)) return
         mediaAudioActive = active
         if (active && session == null) start(context) else if (active) regainFocusLocked()
         publishPlaybackStateLocked()
@@ -363,6 +369,7 @@ internal object CarPlayMediaKeys {
     }
 
     private fun releaseLocked() {
+        CarBluetoothDiagnostics.stop()
         focusOwner = null
         controller?.let(com.shilapi.xcertplay.media.AmbientMusicController::releasePlaybackOwner)
         artworkOwner = null
@@ -416,9 +423,11 @@ internal object CarPlayMediaKeys {
             WheelKeyLog.note("media key $source -> car video player $index")
             return
         }
-        val sent = synchronized(this) { controller }?.sendMediaButton(index) ?: false
-        Log.i(TAG, "media key $source -> CarPlay $index sent=$sent")
-        WheelKeyLog.note("media key $source -> CarPlay $index sent=$sent")
+        val delivery = ElantraTrackCommands.send(synchronized(this) { controller }, index, ElantraTrackRoute.MEDIA_SESSION)
+        val outcome = if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported())
+            "delivery=$delivery route=media-session" else "sent=${delivery == ElantraTrackDelivery.SENT}"
+        Log.i(TAG, "media key $source -> CarPlay $index $outcome")
+        WheelKeyLog.note("media key $source -> CarPlay $index $outcome")
     }
 
     /** A steering-wheel media key captured outside the Android key stream (Geely/Lynk). */
@@ -432,6 +441,7 @@ internal object CarPlayMediaKeys {
 
     private val callback = CarPlayMediaCallback(
         experimentalDiLink3Keys = { appContext?.let(BydOutputSettings::carPlayCallControls) == true },
+        elantraKeys = { com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() },
         send = ::send,
     )
 
@@ -542,14 +552,15 @@ internal object CarPlayMediaKeys {
  */
 internal class CarPlayMediaCallback(
     private val experimentalDiLink3Keys: () -> Boolean = { false },
+    private val elantraKeys: () -> Boolean = { false },
     private val send: (index: Int, source: String) -> Unit,
 ) : MediaSession.Callback() {
     override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
         @Suppress("DEPRECATION")
         val event = mediaButtonIntent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT) ?: return false
-        val index = CarPlayMediaButton.forKeyCode(event.keyCode, experimentalDiLink3Keys())
+        val index = CarPlayMediaButton.forKeyCode(event.keyCode, experimentalDiLink3Keys(), elantraKeys())
             ?: return super.onMediaButtonEvent(mediaButtonIntent)
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+        if (CarPlayMediaButton.sendsOnEvent(event, elantraKeys())) {
             send(index, KeyEvent.keyCodeToString(event.keyCode))
         }
         return true

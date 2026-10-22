@@ -98,8 +98,21 @@ data class AirPlayConfig(
      * default stream (#148, #341). When set, 8 and 16 kHz are not offered for default and alert audio.
      */
     val speechWithout8And16Khz: Boolean = false,
+    /** Explicit voice-only exception: media and telephone audio still belong to native Bluetooth. */
+    val bluetoothVoiceAudio: Boolean = false,
+    /** Offer only 48 kHz PCM for default/alert outputs; input, Siri and music formats stay unchanged. */
+    val promptPcm48KhzOnly: Boolean = false,
 )
 
 /** The offer, SETUP and controls must all honor the user's audio-output setting. */
 internal val AirPlayConfig.bufferedAudioOutputEnabled: Boolean
     get() = mainBufferedAudio && !disableAudioOutput
+
+internal val AirPlayConfig.hasAudioOutput: Boolean
+    get() = !disableAudioOutput || bluetoothVoiceAudio
+
+/** Reject ambiguous compatibility, media, telephone and buffered music in the voice-only mode. */
+internal fun AirPlayConfig.acceptsAudioStream(stream: Map<String, Any?>): Boolean =
+    !disableAudioOutput || (bluetoothVoiceAudio && stream["audioType"] in BLUETOOTH_VOICE_TYPES)
+
+internal val BLUETOOTH_VOICE_TYPES = setOf("speechRecognition", "default", "alert")

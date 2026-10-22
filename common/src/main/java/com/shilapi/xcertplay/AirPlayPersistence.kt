@@ -23,6 +23,43 @@ import java.io.File
 
 /** SharedPreferences persistence for the accessory identity and paired controllers. */
 object AirPlayPersistence {
+    /** Move test1's OEM routing defaults to the inspected third-party CarLife behavior once. */
+    @Synchronized
+    private fun audioPreferences(context: Context): android.content.SharedPreferences {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() &&
+            !prefs.getBoolean(KEY_ELANTRA_THIRD_PARTY_DEFAULTS, false)) {
+            prefs.edit()
+                .putBoolean(KEY_DISABLE_MEDIA_KEY_AUDIO_FOCUS, true)
+                .putBoolean(KEY_AUDIO_FOCUS_ENABLED, false)
+                .putBoolean(KEY_ADVANCED_AUDIO_CHANNEL_MAPPING, false)
+                .putInt(KEY_MEDIA_AUDIO_CHANNEL, 0)
+                .putInt(KEY_NAVIGATION_AUDIO_CHANNEL, 0)
+                .putBoolean(KEY_HIDE_TOP_BAR, true)
+                .putBoolean(KEY_HIDE_BOTTOM_BAR, true)
+                .putBoolean(KEY_HARMAN_FULLSCREEN, true) // Same 2062 flags as third-party CarLife.
+                .putBoolean(KEY_ELANTRA_THIRD_PARTY_DEFAULTS, true)
+                .apply()
+            WheelKeyLog.note("Elantra third-party profile initialized: audio transport preference preserved; native source=Bluetooth audio (manual MODE); no music focus; foreground 274/275 keys; fullscreen=2062")
+        }
+        if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() &&
+            !prefs.getBoolean("elantra_wired_profile_v4", false)) {
+            val update = prefs.edit()
+                .putBoolean(KEY_WIRELESS_ENABLED, false)
+                .putBoolean(KEY_MAIN_DISPLAY_DISABLE_SAFE_AREA, true)
+                .putInt(KEY_BLACK_CORNER_RADIUS, 0)
+                .putBoolean("elantra_wired_profile_v4", true)
+            if (prefs.getString(KEY_OEM_LABEL, DEFAULT_OEM_LABEL) == DEFAULT_OEM_LABEL)
+                update.putString(KEY_OEM_LABEL, "伊兰特")
+            if (prefs.getString(KEY_MANUFACTURER, DEFAULT_MANUFACTURER) == DEFAULT_MANUFACTURER)
+                update.putString(KEY_MANUFACTURER, "Hyundai")
+            if (prefs.getString(KEY_MODEL, DEFAULT_MODEL) == DEFAULT_MODEL)
+                update.putString(KEY_MODEL, "Elantra")
+            update.apply()
+        }
+        return prefs
+    }
+
     /** 0 uses usage-based routing; 1–20 select stream types supported by the head unit. */
     val AUDIO_CHANNELS = 0..20
     private const val PREFS = "xcertplay_airplay"
@@ -76,7 +113,9 @@ object AirPlayPersistence {
     private const val KEY_WIRED_MEDIA_BUFFER_MS = "wired_media_buffer_ms"
     private const val KEY_MAIN_BUFFERED_AUDIO = "main_buffered_audio"
     private const val KEY_SPEECH_WITHOUT_8_16_KHZ = "speech_without_8_16_khz"
+    private const val KEY_PROMPT_PCM_48_ONLY = "prompt_pcm_48_only"
     private const val KEY_CAR_BLUETOOTH_AUDIO = "car_bluetooth_audio"
+    private const val KEY_ELANTRA_THIRD_PARTY_DEFAULTS = "elantra_third_party_defaults_v2"
     private const val KEY_CALL_ECHO_CANCELLATION = "call_echo_cancellation"
     private const val KEY_CALL_VOICE_FILTER = "call_voice_filter"
     private const val KEY_CALL_SPEAKERPHONE = "call_speakerphone"
@@ -218,11 +257,11 @@ object AirPlayPersistence {
     }
 
     fun loadAdvancedAudioChannelMapping(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_ADVANCED_AUDIO_CHANNEL_MAPPING, false)
 
     fun saveAdvancedAudioChannelMapping(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_ADVANCED_AUDIO_CHANNEL_MAPPING, enabled)
             .apply()
     }
@@ -238,11 +277,11 @@ object AirPlayPersistence {
     }
 
     fun loadAudioFocusEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_AUDIO_FOCUS_ENABLED, false)
 
     fun saveAudioFocusEnabled(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_AUDIO_FOCUS_ENABLED, enabled)
             .apply()
     }
@@ -259,35 +298,35 @@ object AirPlayPersistence {
 
     /** Opt-out for head units that route physical volume buttons to DiPlay's focus owner. */
     fun loadDisableMediaKeyAudioFocus(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_DISABLE_MEDIA_KEY_AUDIO_FOCUS, false)
 
     fun saveDisableMediaKeyAudioFocus(context: Context, disabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_DISABLE_MEDIA_KEY_AUDIO_FOCUS, disabled)
             .apply()
     }
 
     fun loadMediaAudioChannel(context: Context): Int =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getInt(KEY_MEDIA_AUDIO_CHANNEL, 0)
             .takeIf { it in AUDIO_CHANNELS } ?: 0
 
     fun saveMediaAudioChannel(context: Context, channel: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putInt(KEY_MEDIA_AUDIO_CHANNEL, channel.takeIf { it in AUDIO_CHANNELS } ?: 0)
             .apply()
     }
 
     fun loadNavigationAudioChannel(context: Context): Int {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = audioPreferences(context)
         // Inherit the legacy value only when the new key is absent; preserve fresh-install and explicit 0 defaults.
         return prefs.getInt(KEY_NAVIGATION_AUDIO_CHANNEL, prefs.getInt(KEY_NAVIGATION_STREAM_TYPE, 0))
             .takeIf { it in AUDIO_CHANNELS } ?: 0
     }
 
     fun saveNavigationAudioChannel(context: Context, channel: Int) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putInt(KEY_NAVIGATION_AUDIO_CHANNEL, channel.takeIf { it in AUDIO_CHANNELS } ?: 0)
             .apply()
     }
@@ -317,8 +356,8 @@ object AirPlayPersistence {
     }
 
     fun loadWirelessEnabled(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getBoolean(KEY_WIRELESS_ENABLED, true)
+        !com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() &&
+            audioPreferences(context).getBoolean(KEY_WIRELESS_ENABLED, true)
 
     fun saveWirelessEnabled(context: Context, enabled: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -575,7 +614,7 @@ object AirPlayPersistence {
     }
 
     fun loadManufacturer(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getString(KEY_MANUFACTURER, null)
             ?.takeIf { it.isNotBlank() }
             ?: DEFAULT_MANUFACTURER
@@ -587,7 +626,7 @@ object AirPlayPersistence {
     }
 
     fun loadModel(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getString(KEY_MODEL, null)
             ?.takeIf { it.isNotBlank() }
             ?: DEFAULT_MODEL
@@ -599,7 +638,7 @@ object AirPlayPersistence {
     }
 
     fun loadOemLabel(context: Context): String =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getString(KEY_OEM_LABEL, DEFAULT_OEM_LABEL)
             // iOS hides the car icon without a label.
             .orEmpty().ifBlank { DEFAULT_OEM_LABEL }
@@ -686,15 +725,42 @@ object AirPlayPersistence {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, false)
 
     fun saveSpeechWithout8And16Khz(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, enabled).apply()
+        saveUsbPromptQuality(context, if (enabled) UsbPromptQuality.CLEAR else UsbPromptQuality.COMPATIBLE)
+    }
+
+    fun loadUsbPromptQuality(context: Context): UsbPromptQuality {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return when {
+            prefs.getBoolean(KEY_PROMPT_PCM_48_ONLY, false) -> UsbPromptQuality.PCM_48_KHZ
+            prefs.getBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, false) -> UsbPromptQuality.CLEAR
+            else -> UsbPromptQuality.COMPATIBLE
+        }
+    }
+
+    fun saveUsbPromptQuality(context: Context, quality: UsbPromptQuality) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, quality != UsbPromptQuality.COMPATIBLE)
+            .putBoolean(KEY_PROMPT_PCM_48_ONLY, quality == UsbPromptQuality.PCM_48_KHZ).apply()
     }
 
     /** Offer no CarPlay audio, so the iPhone keeps audio on its Bluetooth link with the car; applies at reconnect. */
     fun loadCarBluetoothAudio(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_CAR_BLUETOOTH_AUDIO, false)
+        audioPreferences(context).getBoolean(
+            KEY_CAR_BLUETOOTH_AUDIO, false,
+        )
+
+    /** Only this Elantra profile can opt into voice while retaining Bluetooth music. */
+    fun loadElantraBluetoothVoice(context: Context): Boolean =
+        com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() &&
+            audioPreferences(context).getBoolean("elantra_bluetooth_voice", true)
+
+    fun saveElantraBluetoothVoice(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean("elantra_bluetooth_voice", enabled).apply()
+    }
 
     fun saveCarBluetoothAudio(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_CAR_BLUETOOTH_AUDIO, enabled).apply()
+        audioPreferences(context).edit().putBoolean(KEY_CAR_BLUETOOTH_AUDIO, enabled).apply()
     }
 
     fun loadSmoothVideo(context: Context): Boolean =
@@ -1336,21 +1402,21 @@ object AirPlayPersistence {
     }
 
     fun loadHideTopBar(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_HIDE_TOP_BAR, true)
 
     fun saveHideTopBar(context: Context, hide: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_HIDE_TOP_BAR, hide)
             .apply()
     }
 
     fun loadHideBottomBar(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_HIDE_BOTTOM_BAR, true)
 
     fun saveHideBottomBar(context: Context, hide: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_HIDE_BOTTOM_BAR, hide)
             .apply()
     }
@@ -1367,11 +1433,11 @@ object AirPlayPersistence {
     }
 
     fun loadHarmanFullscreen(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_HARMAN_FULLSCREEN, false)
 
     fun saveHarmanFullscreen(context: Context, enabled: Boolean) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        audioPreferences(context).edit()
             .putBoolean(KEY_HARMAN_FULLSCREEN, enabled)
             .apply()
     }
@@ -1388,7 +1454,7 @@ object AirPlayPersistence {
 
     /** Off by default: square full-screen video is for screens that show a gap or wallpaper corners (#578, #586). */
     fun loadMainDisplayDisableSafeArea(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getBoolean(KEY_MAIN_DISPLAY_DISABLE_SAFE_AREA, false)
 
     fun saveMainDisplayDisableSafeArea(context: Context, disable: Boolean) {
@@ -1399,7 +1465,7 @@ object AirPlayPersistence {
 
     /** Local video overlay; does not alter the iPhone's display or safe-area negotiation. */
     fun loadBlackCornerRadiusDp(context: Context): Int =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        audioPreferences(context)
             .getInt(KEY_BLACK_CORNER_RADIUS, 0)
             .takeIf { it in CarPlayBlackCornerOverlay.RADII_DP } ?: 0
 

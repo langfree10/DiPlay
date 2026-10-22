@@ -29,6 +29,17 @@ class Iap2WiredControlClientTest {
     }
 
     @Test
+    fun dataOnlyClearsTheChargingFlagWithoutTouchingTheTransport() {
+        val frame = Iap2WiredControlClient.powerSourceUpdate(0)
+        assertEquals(0xae03, frame.messageId)
+        val fields = Iap2BodyReader.of(frame).list()
+        assertArrayEquals(byteArrayOf(0, 0), fields.single { it.id == 0 }.payload)
+        assertArrayEquals(byteArrayOf(0), fields.single { it.id == 1 }.payload)
+        val normal = Iap2BodyReader.of(Iap2WiredControlClient.powerSourceUpdate(2400)).list()
+        assertArrayEquals(byteArrayOf(1), normal.single { it.id == 1 }.payload)
+    }
+
+    @Test
     fun powerSourceUpdateOffersTheConfiguredChargingCurrent() {
         listOf(2400, 1500, 500).forEach { milliAmps ->
             val frame = Iap2WiredControlClient.powerSourceUpdate(milliAmps)

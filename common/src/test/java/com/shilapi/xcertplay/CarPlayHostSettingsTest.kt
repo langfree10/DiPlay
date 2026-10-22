@@ -82,6 +82,24 @@ class CarPlayHostSettingsTest {
         controllers.close()
     }
 
+    @Test fun promptQualityPreferenceReachesTheNextConnectionConfigWithoutChangingOtherAudioFlags() {
+        val size = field("activeDisplaySize")!!
+        val create = activity.javaClass.getDeclaredMethod("createAirPlayConfig", size.javaClass)
+            .apply { isAccessible = true }
+        AirPlayPersistence.saveUsbPromptQuality(activity, UsbPromptQuality.COMPATIBLE)
+        val base = create.invoke(activity, size) as AirPlayConfig
+        for (quality in UsbPromptQuality.entries) {
+            AirPlayPersistence.saveUsbPromptQuality(activity, quality)
+            val config = create.invoke(activity, size) as AirPlayConfig
+            assertEquals(quality == UsbPromptQuality.PCM_48_KHZ, config.promptPcm48KhzOnly)
+            assertEquals(quality != UsbPromptQuality.COMPATIBLE, config.speechWithout8And16Khz)
+            assertEquals(base.disableAudioOutput, config.disableAudioOutput)
+            assertEquals(base.bluetoothVoiceAudio, config.bluetoothVoiceAudio)
+            assertEquals(base.entertainmentSampleRate, config.entertainmentSampleRate)
+            assertEquals(base.microphone, config.microphone)
+        }
+    }
+
     @Test
     @Config(sdk = [28, 29, 32])
     fun callPopupSwitchRequiresBydAndAndroid10() {
@@ -923,6 +941,52 @@ class CarPlayHostSettingsTest {
         assertEquals(24, mask.radiusDp)
         assertEquals(24, AirPlayPersistence.loadBlackCornerRadiusDp(activity))
         invoke("cancelSettingsEdits")
+    }
+
+    @Test
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun elantraVideoCodecChoiceSupportsApplyAndLargeFontOverlayLayouts() {
+        val manufacturer = Build.MANUFACTURER; val model = Build.MODEL
+        try {
+            org.robolectric.shadows.ShadowBuild.setManufacturer("humaxdigital")
+            org.robolectric.shadows.ShadowBuild.setModel("BHCN-T3103C")
+            invoke("loadPersistedSettings")
+            for ((name, width, height) in listOf(Triple("compact", 800, 600), Triple("full", 1920, 720), Triple("arabic-rtl", 800, 600))) {
+                val config = Configuration(activity.resources.configuration).apply {
+                    fontScale = 1.5f
+                    val locale = Locale.forLanguageTag(if (name.contains("arabic")) "ar-SA" else "zh-CN")
+                    setLocale(locale); setLayoutDirection(locale)
+                }
+                @Suppress("DEPRECATION")
+                activity.resources.updateConfiguration(config, activity.resources.displayMetrics)
+                setField("settingsMenuCategoryKey", "advanced")
+                val root = invoke("buildSettingsMenu") as View
+                val hevc = views(root).filterIsInstance<RadioButton>().first { it.text == activity.getString(R.string.settings_video_hevc) }
+                hevc.isChecked = true
+                assertEquals(true, field("hevcEnabled"))
+                repeat(3) {
+                    root.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY))
+                    root.layout(0, 0, width, height)
+                }
+                for (option in views(root).filterIsInstance<RadioButton>().filter { it.text == activity.getString(R.string.settings_video_hevc) || it.text == activity.getString(R.string.settings_video_h264) }) {
+                    assertTrue("Codec label clipped in $name", option.layout.getLineBottom(option.layout.lineCount - 1) <=
+                        option.height - option.compoundPaddingTop - option.compoundPaddingBottom)
+                }
+                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                try {
+                    root.draw(Canvas(bitmap))
+                    val file = File("build/reports/elantra-test6-ui/overlay-$name.png")
+                    file.parentFile!!.mkdirs()
+                    file.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                } finally { bitmap.recycle() }
+            }
+            invoke("persistMenuSettings")
+            assertTrue(AirPlayPersistence.loadHevcEnabled(activity))
+        } finally {
+            org.robolectric.shadows.ShadowBuild.setManufacturer(manufacturer)
+            org.robolectric.shadows.ShadowBuild.setModel(model)
+        }
     }
 
     private fun resizeWindow(width: Int, height: Int) {

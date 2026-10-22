@@ -970,4 +970,32 @@
 
     <string name="settings_hotspot_interface">熱點網路介面（選填）</string>
     <string name="settings_hotspot_interface_description">僅用於把熱點放在 Android 不認為是 Wi-Fi 熱點的網路介面上的車機，例如部分吉利、領克及其它高通車機上的 eth0.3。留空則自動尋找。</string>
+    <string name="settings_usb_charging_data_only">請求不充電（只傳資料）</string>
+    <string name="settings_usb_data_only_description">下次 USB 連線時向 iPhone 請求不充電。手機可能不接受；DiPlay 無法實際切斷 USB 供電。重新連線後生效。</string>
+    <string name="settings_elantra_square_display">CarPlay 直角顯示</string>
+    <string name="settings_elantra_square_display_description">使用完整的矩形螢幕，伊蘭特預設開啟。重新連線後生效。</string>
+    <string name="settings_siri_usb_reply_experimental">藍牙音樂時的 Siri 回覆（實驗性）</string>
+    <string name="settings_siri_usb_reply_description">音樂繼續使用藍牙，Siri 語音透過 USB 播放。此車預設開啟，重新連線後生效。若影響音樂，可關閉此項並保留「汽車藍牙音訊」開啟。</string>
+    <string name="settings_report_to_usb">匯出至 USB 隨身碟/資料夾</string>
+    <string name="settings_report_usb_description">首次選擇隨身碟內的資料夾，之後可直接匯出。無需掃碼或連網，並保留一份本機記錄。</string>
+    <string name="settings_report_usb_unavailable">車機無法開啟資料夾選擇器。請先儲存本機，再用檔案管理器把 Download/DiPlay 中的記錄複製至隨身碟。</string>
+    <string name="settings_report_usb_saved">已儲存至所選資料夾：%1$s</string>
+    <string name="settings_report_usb_failed">無法寫入所選資料夾。本機記錄已保留：%1$s。請連接隨身碟或重新選擇資料夾。</string>
+    <string name="settings_report_usb_reselect">重新選擇資料夾</string>
+    <string name="settings_video_codec_experimental">影片編碼（實驗性）</string>
+    <string name="settings_video_h264">H.264（相容優先）</string>
+    <string name="settings_video_hevc">優先 HEVC（H.265）</string>
+    <string name="settings_video_codec_hint">HEVC 是優先選項，並非強制。車機未提供 HEVC 支援時使用 H.264，手機也可能選擇 H.264。重新連線生效，不保證更省電。</string>
+    <string name="settings_video_frame_rate_hint">較低影格率可減少畫面處理負擔。此值是請求上限，實際影格率隨畫面變化；重新連線生效。</string>
+    <string name="settings_video_received">最近連線收到：%1$s</string>
+    <string name="settings_video_received_unknown">最近連線編碼：尚未收到影片</string>
+    <string name="settings_usb_prompt_quality_experimental">USB 提示音質（實驗性）</string>
+    <string name="settings_usb_prompt_compatible">相容</string>
+    <string name="settings_usb_prompt_clear">清晰優先</string>
+    <string name="settings_usb_prompt_quality_description">相容保留所有提示音格式；清晰優先排除 8/16 kHz PCM；48 kHz PCM 僅向手機提供該提示音格式，可能不相容。重新連線後生效；若播報無聲，請改回清晰優先或相容。</string>
+    <string name="settings_usb_prompt_received">最近收到的 USB 提示音：%1$s kHz · %2$s · %3$d 聲道</string>
+    <string name="settings_usb_prompt_received_unknown">尚未收到過 USB 提示音格式；播放一次導航播報後會顯示。</string>
+    <string name="settings_usb_prompt_received_opus">最近收到的 USB 提示音：Opus · 時脈 %1$s kHz · 解碼 %2$s kHz · %3$d 聲道</string>
+    <string name="settings_usb_prompt_previous_connection">上次連線收到，時間：%1$s；本次連線尚未收到提示音。</string>
+    <string name="settings_usb_prompt_pcm_48">48 kHz PCM</string>
 </resources>

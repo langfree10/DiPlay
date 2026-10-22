@@ -23,6 +23,19 @@ class CarPlayMediaCallbackTest {
     private val sent = mutableListOf<Int>()
     private val callback = CarPlayMediaCallback { index, _ -> sent += index }
 
+    @Test fun thirdPartyElantraKeysSendOnReleaseAndIgnoreCanceledRelease() {
+        val elantra = CarPlayMediaCallback(elantraKeys = { true }) { index, _ -> sent += index }
+        for ((code, expected) in listOf(274 to CarPlayMediaButton.PREVIOUS, 275 to CarPlayMediaButton.NEXT)) {
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 0)))
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 1, KeyEvent.ACTION_DOWN, code, 1)))
+            assertEquals(0, sent.count { it == expected })
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 2, KeyEvent.ACTION_UP, code, 0)))
+            assertEquals(1, sent.count { it == expected })
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 3, KeyEvent.ACTION_UP, code, 0, 0, 0, 0, KeyEvent.FLAG_CANCELED)))
+            assertEquals(1, sent.count { it == expected })
+        }
+    }
+
     @Test
     fun controllerPlayAndPauseAreExplicit() {
         callback.onPlay()

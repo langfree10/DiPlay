@@ -15,11 +15,12 @@ class UsbChargingCurrentTest {
 
     @Test fun normalKeepsTheExistingChargingOffer() {
         assertEquals(CarPlayRuntimeConfig.DEFAULT_AVAILABLE_CURRENT_MILLI_AMPS, UsbChargingCurrent.NORMAL.milliAmps)
-        assertEquals(listOf(2400, 1500, 500), UsbChargingCurrent.entries.map { it.milliAmps })
+        assertEquals(listOf(0, 500, 1500, 2400), UsbChargingCurrent.entries.map { it.milliAmps })
     }
 
     @Test fun storedValuesAreStableKeysAndUnknownOnesFallBackToNormal() {
-        assertEquals(listOf("normal", "reduced", "low"), UsbChargingCurrent.entries.map { it.key })
+        assertEquals(listOf("data_only", "low", "reduced", "normal"), UsbChargingCurrent.entries.map { it.key })
+        for (current in UsbChargingCurrent.entries) assertEquals(current, UsbChargingCurrent.fromKey(current.key))
         assertEquals(UsbChargingCurrent.NORMAL, UsbChargingCurrent.fromKey(null))
         assertEquals(UsbChargingCurrent.NORMAL, UsbChargingCurrent.fromKey("2"))
     }

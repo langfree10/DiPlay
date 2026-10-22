@@ -1,67 +1,89 @@
-# DiPlay
+# DiPlay Elantra · 第七代伊兰特适配版
 
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)
+基于 [shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay) 的个人维护 fork，为 **2021 款第七代伊兰特的安卓车机**适配有线 CarPlay。
 
-**CarPlay for compatible BYD Android head units.** Wired and wireless, with the familiar DiAuto interface. Independent app: `com.shihab.diplay`.
+- 本仓库：[langfree10/DiPlay](https://github.com/langfree10/DiPlay)
+- 伊兰特源码分支：[elantra](https://github.com/langfree10/DiPlay/tree/elantra)；`main` 保留上游跟踪代码
+- 适配基线：上游 **0.2.21**，提交 [`6d3b8a8ce927cb4b115b8c3881f17619433e93b1`](https://github.com/shihabal3amri/DiPlay/commit/6d3b8a8ce927cb4b115b8c3881f17619433e93b1)
+- 当前车测候选版：**0.2.21-elantra-test12**
+- 应用安装在车机；测试包名：`com.shihab.diplay.hudtest`
 
-> **BYD support scope:** These projects focus on BYD cars. They may work on other brands, but other brands are unsupported and there are no plans to add support or fix brand-specific incompatibilities.
+这是独立的伊兰特适配工作，**不代表上游 DiPlay 官方支持现代车型**。上游原始说明保存在[英文原文](docs/DIPLAY_UPSTREAM_README.md)与[中文原文](docs/DIPLAY_UPSTREAM_README.zh-CN.md)。
 
-[Download & website](https://shihabal3amri.github.io/DiPlay/) · [Release](https://github.com/shihabal3amri/DiPlay/releases/tag/v0.2.21) · [Report a problem](https://github.com/shihabal3amri/DiPlay/issues/new/choose)
+## 适配对象
 
-![DiPlay home](site/assets/home.png)
+实际测试车辆为 2021 款第七代伊兰特，后加装 360，车机没有 Wi-Fi 模块。车型专属默认配置按以下信息匹配：
 
-## 0.2.21 — public preview
+| 项目 | 当前验证对象 |
+| --- | --- |
+| Manufacturer | `humaxdigital` |
+| Model | `BHCN-T3103C` |
+| Android | Android 9 / API 28 |
+| 连接方式 | iPhone USB 有线 CarPlay |
+| 音乐工作方式 | 原车 MODE 选择“蓝牙音频” |
 
-Install on the **car**, not the iPhone. No jailbreak, dongle, Mac, account or authentication server is required for use. Core CarPlay does not require ADB; optional dashboard, battery, wheel-speed and parked-video features do. Your head unit must permit APK installation. The APK supports Android 7.0+ (API 24); Android 7.0–8.1 support is not yet confirmed on a vehicle. Wireless supports Wi-Fi Direct, the car’s existing hotspot or Existing Wi-Fi / Same LAN. Android 7.0–9 Wi-Fi Direct uses a firmware-dependent legacy path with generated group credentials and unverified requested frequency; see [Android 9 Wi-Fi Direct](docs/ANDROID9_WIFI_DIRECT.md). Android 10+ verifies its negotiated group frequency.
+其他年款、车机型号和固件仍需单独验证。没有新增 360、空调、仪表或车身控制协议。
 
-- Wired USB and wireless CarPlay with local authentication.
-- BYD HUD navigation with arrows, distance and street names on verified firmware.
-- Car hotspot support, improved audio buffering and saved receive diagnostics.
-- Automatic address discovery, fixed-channel Wi-Fi fallbacks and successful-configuration memory.
-- Icon/text size, resolution and frame rate; applying a display change reconnects CarPlay.
-- Local diagnostic export. Reports are sent only if you choose to share them.
-- Separate installation alongside DiAuto. Run one projection app at a time.
+## 相对上游做了哪些改动
 
-This is **not an Apple-certified product**. The APK bundles an experimental accessory identity recovered from public Carlinkit firmware, not a newly provisioned MFi identity for DiPlay. A bundled private key is extractable. Acceptance after future iOS updates, reliability across head units and suitability of that identity for general distribution are unresolved. This release invites community testing; it is not a guarantee of universal compatibility.
+| 方面 | 本 fork 的改动 |
+| --- | --- |
+| 伊兰特默认配置 | 按准确车机型号初始化有线、全屏、音频焦点等默认值；保留已有音频传输偏好与后续手动设置。 |
+| 方向盘切歌 | 适配第三方 CarLife 使用的 274/275 按键，支持松开触发与仅收到松开事件。窗口与媒体会话共享去重，修复单按切两首；通话和未连接状态保留原车处理。 |
+| 原车蓝牙音乐 | 移除依赖蓝牙音源／焦点状态的按键封锁，避免吞键；提供 A2DP Sink、HFP Client 等接收端诊断。 |
+| Siri 与音源恢复 | 独立管理 USB 助手的临时音频焦点，结束后尝试恢复之前的原厂音源。test11 起尝试使用导航播放用途输出 Siri 回复，并增加下行音频电平诊断。 |
+| 导航语音音质 | 增加“兼容／清晰优先／48 kHz PCM”三档协商；48 kHz 档位只调整导航／提示音输出格式，保留 Siri、音乐、电话和麦克风的格式。 |
+| 实际采样率 | 显示真正收到的 USB 提示音采样率、编码与声道数，保留历史连接记录并标明来源，页面自动刷新；设置值与接收值独立。 |
+| 全屏和外观 | 伊兰特默认直角、铺满屏幕，提供直角全屏开关；默认车辆名称为“伊兰特”，车辆按钮采用现代图标。 |
+| USB 充电 | 增加 0 mA“只传数据”请求，电流列表升序排列。该请求不等同于物理切断 USB 5V 供电，实际行为取决于手机。 |
+| USB 连接 | 改进插线时的重连配置判断、重新枚举轮询及阶段日志；此车型跳过可选手机 syslog 采集，保留必要认证、配对和 USB 网络流程。 |
+| 无 Wi-Fi 车机界面 | 此车型以 USB 为主要入口，隐藏不适用的无线连接和 BYD 专属卡片；保留 USB 所需的本地网络能力。 |
+| 视频参数 | 提供帧率和 H.264／HEVC 偏好，显示实际收到的编码；HEVC 使用取决于解码能力及手机协商。 |
+| 离线日志 | 可选择 U 盘／文件夹导出诊断，适合车机无法联网或扫码导出不可用的情况。 |
 
-Earlier releases were tested on the development DiLink5.1 car: live windshield guidance and street names work, Car hotspot now starts CarPlay, and Wi-Fi Direct performance is substantially improved. Audio underrun recovery is improved in 0.2.15; remaining cutouts need current diagnostic reports. The 0.2.16 software Opus microphone fallback was accepted on a BOS Mini A1 head unit (Android 9) with an iPhone 12 on iOS 27. The floating-map test build was installed on the development DiLink 5.1 car; feedback led to the pinch corrections in 0.2.9. Earlier wheel-speed and video contributions were tested on a BYD Tang with DiLink 5.0 and an iPhone 15 Pro on iOS 27; wheel-speed dead reckoning in tunnels remains unverified. Broader head-unit and iOS compatibility is not guaranteed. The HUD firmware scope and cleanup limits are documented in [BYD navigation](docs/BYD_NAVIGATION.md).
+实现参考了车主使用的**第三方 CarLife 的按键与公开 Android 播放行为**。本仓库不包含该应用的 APK、反编译工程或车机固件。
 
-## What’s new in 0.2.21
+## 已验证与待验证
 
-- Music plays in step with the iPhone again: on 0.2.20, pause, skip and track changes could come seconds late, and the speed could wobble.
-- Wired CarPlay recovers by itself when the iPhone never opens CarPlay, no longer waits forever after **Disconnect**, and keeps a connection that has already recovered.
-- DiPlay no longer closes when the microphone is used on head units without Android's own Opus encoder, and music comes back after a call or a short interruption.
-- Wireless CarPlay says why it cannot start; on BYD head units the dashboard is handed back to the car when CarPlay ends, and DiPlay no longer closes from the DiYou desktop card.
-- DiPlay installs on Android 7.0 and is available in Italian.
-- New options, off by default: temporary system bars, black rounded corners, a play/pause wheel key, double press for Siri, importing the car hotspot details, a home-screen bubble and the car's own music rhythm.
+实车反馈与本地自动化检查分开记录：
 
-See [0.2.21 release notes](docs/RELEASE-NOTES-0.2.21.md) and [validation](docs/VALIDATION.md) for contribution links and remaining physical tests. General stutter, calls/Siri, decoder and model-specific reports still need current-device evidence. [0.2.20 notes](docs/RELEASE-NOTES-0.2.20.md) remain available as historical guidance.
+| 功能 | 当前状态 |
+| --- | --- |
+| 蓝牙音乐、音量、方向盘单次切歌 | **test10 实车反馈正常**，此前重复切歌已修正。 |
+| 导航声道 | **test10 实车反馈正常**；晚间记录的 49 段导航音轨均为 **24 kHz、双声道 PCM**。 |
+| Siri 结束后恢复蓝牙音频 | **test10 实车反馈正常**。 |
+| 0 mA 请求、直角全屏 | 之前测试版已有实车生效反馈。 |
+| Siri 回复出声 | test10 仍无声；**test11/12 的导航播放用途方案待实车确认**。 |
+| 48 kHz PCM 导航 | **test12 新增实验档位，待实车确认手机是否接受**。 |
+| USB 重连速度、无线转接盒、其他车型 | 尚无足够实车结果，不作兼容保证。 |
 
-If a problem remains, reproduce it on **0.2.21**, then use **Settings → Diagnostics → Save diagnostic report**. Android 10+ normally saves to **Downloads/DiPlay**; Android 7.0–9 asks for storage access and saves there too. If unavailable, use **View report** or **Share** from the confirmation, which identifies external/private fallback storage. Review the `.txt` and add it to a matching [existing issue](https://github.com/shihabal3amri/DiPlay/issues), or [create one](https://github.com/shihabal3amri/DiPlay/issues/new/choose). Include vehicle/head-unit model, exact firmware and Android/DiLink, phone/iOS, connection backend, relevant settings, steps and failure time. Reports are shared only when you choose; never post your hotspot password.
+test12 本地检查结果：**3192 项通过、1 项原有跳过**；三项已知本机网络用例按车主要求排除，不计为通过。三个应用的 lint 与构建完成，APK 签名及本地运行库输入校验通过。详情见[伊兰特验证记录](docs/ELANTRA_AUDIO_TEST.md)。
 
-## Documentation
+## 使用方式
 
-[Existing Wi-Fi / Same LAN](docs/EXISTING_WIFI.md) keeps the iPhone and head unit
-on an external router. See the guide for setup, build requirements and the
-BYD DiLink 4.0 / Android 10 clean-install validation result.
+1. 将对应的测试 APK 安装在车机，使用支持数据传输的 USB 线连接 iPhone。
+2. 沿用已正常工作的蓝牙配对及音频设置，实际播放音乐时用原车 **MODE 选择“蓝牙音频”**。
+3. “我的音乐＋静音文件”仅是车主用于屏蔽收音机的办法；实际音乐音源仍按上一项选择。静音文件不包含在仓库中。
+4. 导航音质在 **设置 → 高级 → 视频与音频 → USB 提示音质（实验性）**，选择后需重新连接 CarPlay。
+5. 选择 48 kHz 后播放一次导航语音，查看下方实际接收格式。只有显示本次连接的 **48 kHz · PCM**，才能确认手机确实采用；若无播报，改回“清晰优先”或“兼容”再重连。
 
-- [Install and connect](docs/INSTALL.md)
-- [Compatibility and troubleshooting](docs/COMPATIBILITY.md)
-- [Smooth wireless CarPlay](docs/SMOOTH_WIRELESS.md)
-- [Privacy and diagnostic reports](docs/PRIVACY.md)
-- [Build from source](docs/BUILD.md) — select `mobile` for the main DiPlay app; `maphost` is a map sample.
-- [Validation](docs/VALIDATION.md)
-- [Release notes](CHANGELOG.md)
-- [Credits and licenses](docs/THIRD_PARTY_NOTICES.md)
+切换音质选项不自动中断运行中的连接。排查时结合接收日志及设置，不仅依赖原车音源名称推断蓝牙或 USB 传输。
 
-The app and the website source include English, Arabic, Russian, Ukrainian, Spanish, Simplified Chinese, Traditional Chinese (Taiwan), and Japanese. Traditional Chinese uses Taiwan wording; the app also recognizes Hong Kong/Macao and explicit Hant selections without claiming separate regional translations. Choose the app language in Settings; on Android 13+, it stays synchronized with Android’s per-app language setting. See the [Traditional Chinese guide](README.zh-TW.md) for installation, settings, troubleshooting, privacy and build instructions.
+## 构建与反馈
 
-## Source and credits
+- [伊兰特构建说明](docs/BUILD_ELANTRA.md)：环境、源码构建与本地检查。
+- [伊兰特音频与实车验证](docs/ELANTRA_AUDIO_TEST.md)：功能边界、验证状态和日志要点。
+- [上游构建说明](docs/BUILD.md)、[原始验证记录](docs/VALIDATION.md)。
 
-Based on [xcertplay](https://github.com/shilapi/xcertplay), GPL-3.0. The home/settings UI and website adapt [DiAuto](https://github.com/shihabal3amri/DiAuto), AGPL-3.0; that license is included in `docs/licenses`. Preserve those notices when distributing modifications. CarPlay and its icon belong to Apple Inc.; no Apple or BYD affiliation or endorsement is implied.
+源码与 CI 构建默认不含配件认证身份。本地独立实车 APK 使用显式指定的外部运行资料；**配件私钥、Android 签名密钥、个人诊断日志及本地安装包不提交到本仓库**。本次提交是源码同步，不自动发布带运行身份的 APK。
 
-This repository starts with a clean public source snapshot. Local research, tester reports and release-signing secrets are excluded. The complete source corresponding to the APK is provided with every release; experimental runtime identity assets are described separately in the build instructions and notices.
+## 来源与致谢
 
-## Local release packaging
+- [DiPlay / shihabal3amri](https://github.com/shihabal3amri/DiPlay)：本 fork 的直接上游。
+- [xcertplay / shilapi](https://github.com/shilapi/xcertplay)：DiPlay 的接收器基础，保留 [GPL-3.0](LICENSE) 与原有归属。
+- [DiAuto](https://github.com/shihabal3amri/DiAuto)：上游首页／设置界面来源，保留原有 AGPL-3.0 标记及[许可文本](docs/licenses/DiAuto-AGPL-3.0.txt)。
+- 其他依赖、资源及商标说明见[第三方说明](docs/THIRD_PARTY_NOTICES.md)。现代与 Apple 的名称、图标不代表官方授权或背书。
 
-The release APK intentionally contains the experimental accessory identity. The Git repository and source archive exclude all accessory and Android signing keys; tests generate synthetic identities at runtime. Source/CI builds omit runtime identity assets by default. Local release builds explicitly select an external asset directory. Publishing the APK makes its bundled identity extractable; building locally does not preserve that identity's confidentiality.
+### English summary
+
+This is an independent Hyundai Elantra adaptation of [shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay), based on upstream 0.2.21. The exact Humax `BHCN-T3103C` / Android 9 profile focuses on wired USB CarPlay, steering-wheel key deduplication, native Bluetooth music integration, fullscreen defaults, offline diagnostics and selectable USB prompt formats. Siri reply routing and the new 48 kHz PCM prompt option still require physical-car validation. Upstream credits and license notices are retained; runtime identities, signing keys and personal logs are excluded.

@@ -9,6 +9,36 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AirPlayInfoPlistTest {
+    @Test fun bluetoothAudioDoesNotRequestOwnershipOfTheAudioResource() {
+        val config = AirPlayConfig(
+            deviceName = "test", deviceId = "02:00:00:00:00:02", btMac = "02:00:00:00:00:01",
+            sourceVersion = "1.0", main = AirPlayDisplayConfig(widthPixels = 800, heightPixels = 480),
+        )
+        for (disabled in listOf(false, true)) {
+            val info = AirPlayInfoPlist.build(config.copy(disableAudioOutput = disabled))
+            val resources = (info["modes"] as Map<*, *>)["resources"] as List<*>
+            val ids = resources.map { (it as Map<*, *>)["resourceID"] }
+            assertEquals(if (disabled) listOf(1) else listOf(1, 2), ids)
+        }
+    }
+
+    @Test fun bluetoothVoiceOnlyAdvertisesVoiceFormatsAndNeverBufferedMusic() {
+        val config = AirPlayConfig(deviceName = "test", deviceId = "02:00:00:00:00:02", btMac = "02:00:00:00:00:01",
+            sourceVersion = "1.0", main = AirPlayDisplayConfig(widthPixels = 800, heightPixels = 480),
+            disableAudioOutput = true, bluetoothVoiceAudio = true, mainBufferedAudio = true)
+        val info = AirPlayInfoPlist.build(config)
+        for (key in listOf("audioFormats", "audioLatencies")) {
+            val entries = (info[key] as List<*>).map { it as Map<*, *> }
+            assertTrue(entries.isNotEmpty())
+            assertTrue(entries.all { it["audioType"] in setOf("speechRecognition", "default", "alert") })
+            assertTrue(entries.none { it["type"] == 103 })
+        }
+        assertFalse(info.containsKey("mainBufferedInfo"))
+        val disabled = AirPlayInfoPlist.build(config.copy(bluetoothVoiceAudio = false))
+        assertFalse(disabled.containsKey("audioFormats"))
+        assertFalse(disabled.containsKey("audioLatencies"))
+    }
+
     @Test
     fun bothDisplaysDeclareAutomaticAppearanceAtConnection() {
         val config = AirPlayConfig(
@@ -419,6 +449,34 @@ class AirPlayInfoPlistTest {
         // AltScreen (cluster) must keep its safeArea even if mainDisplayDisableSafeArea was passed
         val clusterView = (clusterDisplay["viewAreas"] as List<*>).single() as Map<*, *>
         assertTrue(clusterView.containsKey("safeArea"))
+    }
+
+    @Test fun prompt48KhzOnlyChangesPromptOutputsAndKeepsSiriMusicAndMicrophoneOffers() {
+        for (musicRate in listOf(44100, 48000)) {
+            for (voiceOnly in listOf(false, true)) {
+                val base = AirPlayConfig("test", "02:00:00:00:00:02", "02:00:00:00:00:01", "366.0",
+                    AirPlayDisplayConfig(1280, 720), entertainmentSampleRate = musicRate,
+                    microphone = true, disableAudioOutput = voiceOnly, bluetoothVoiceAudio = voiceOnly)
+                fun formats(config: AirPlayConfig) = (AirPlayInfoPlist.build(config)["audioFormats"] as List<*>)
+                    .map { it as Map<*, *> }
+                val before = formats(base)
+                val after = formats(base.copy(promptPcm48KhzOnly = true))
+                assertEquals(before.size, after.size)
+                for ((old, new) in before.zip(after)) {
+                    if (old["audioType"] in setOf("default", "alert")) {
+                        assertEquals(0xc000, new["audioOutputFormats"])
+                        assertEquals(old.filterKeys { it != "audioOutputFormats" }, new.filterKeys { it != "audioOutputFormats" })
+                    } else assertEquals(old, new)
+                }
+                val bothOptions = formats(base.copy(promptPcm48KhzOnly = true, speechWithout8And16Khz = true))
+                assertEquals(after, bothOptions)
+            }
+        }
+        for (bits in listOf(0x4000L, 0x8000L)) {
+            val format = AudioStreamCodec.fromFormatBits(bits, 101, "default")
+            assertEquals(AudioCodecKind.LPCM, format.codec)
+            assertEquals(48000, format.sampleRate)
+        }
     }
 
     @Test

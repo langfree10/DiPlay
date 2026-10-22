@@ -137,7 +137,7 @@ class Iap2WiredControlClient(
 
         /** Exact LIVI wired PowerSourceUpdate encoding: current and the charge-if-powered flag. */
         fun powerSourceUpdate(availableCurrentMilliAmps: Int): Iap2Frame =
-            Iap2ControlMessages.powerSourceUpdate(availableCurrentMilliAmps, charging = true)
+            Iap2ControlMessages.powerSourceUpdate(availableCurrentMilliAmps, charging = availableCurrentMilliAmps > 0)
 
         /** Exact five subscription requests emitted by LIVI's wired bring-up. */
         fun subscriptions(): List<Iap2Frame> = Iap2ControlMessages.subscriptions()

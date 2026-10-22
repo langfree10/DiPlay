@@ -910,4 +910,32 @@
 
     <string name="settings_hotspot_interface">Интерфейс точки доступа (необязательно)</string>
     <string name="settings_hotspot_interface_description">Только для головных устройств, которые держат точку доступа на сетевом интерфейсе, не считающемся в Android точкой доступа Wi-Fi, например eth0.3 на некоторых устройствах Geely, Lynk &amp; Co и других Qualcomm. Оставьте пустым для автоматического поиска.</string>
+    <string name="settings_usb_charging_data_only">Запрос без зарядки (только данные)</string>
+    <string name="settings_usb_data_only_description">При следующем USB-подключении запрашивает iPhone не заряжаться. Телефон может проигнорировать запрос; DiPlay не может физически отключить питание USB. Переподключитесь для применения.</string>
+    <string name="settings_elantra_square_display">Прямые углы CarPlay</string>
+    <string name="settings_elantra_square_display_description">Использует весь прямоугольный экран. Включено по умолчанию на этой Elantra. Переподключитесь для применения.</string>
+    <string name="settings_siri_usb_reply_experimental">Ответы Siri при музыке Bluetooth (экспериментально)</string>
+    <string name="settings_siri_usb_reply_description">Музыка остаётся в Bluetooth, голос Siri поступает по USB. Включено по умолчанию для этой Elantra. Переподключитесь для применения. При проблемах с музыкой отключите этот пункт, оставив Bluetooth-аудио автомобиля включённым.</string>
+    <string name="settings_report_to_usb">Экспорт на USB / в папку</string>
+    <string name="settings_report_usb_description">Один раз выберите папку на USB-накопителе для прямого экспорта. QR-код и сеть не нужны. Локальная копия сохраняется.</string>
+    <string name="settings_report_usb_unavailable">Устройство не может открыть выбор папки. Сохраните локально и скопируйте отчёт из Download/DiPlay на USB через файловый менеджер.</string>
+    <string name="settings_report_usb_saved">Сохранено в выбранной папке: %1$s</string>
+    <string name="settings_report_usb_failed">Не удалось записать в папку. Локальная копия: %1$s. Подключите USB-накопитель или выберите другую папку.</string>
+    <string name="settings_report_usb_reselect">Выбрать другую папку</string>
+    <string name="settings_video_codec_experimental">Кодирование видео (экспериментально)</string>
+    <string name="settings_video_h264">H.264 (совместимость)</string>
+    <string name="settings_video_hevc">Предпочитать HEVC (H.265)</string>
+    <string name="settings_video_codec_hint">HEVC — предпочтение, а не гарантия. Без поддержки HEVC используется H.264; iPhone также может выбрать H.264. Применяется после переподключения. Снижение расхода энергии не гарантируется.</string>
+    <string name="settings_video_frame_rate_hint">Меньшая частота может снизить нагрузку обработки изображения. Это запрашиваемый предел; фактическая частота зависит от изображения. Переподключитесь для применения.</string>
+    <string name="settings_video_received">Получено при последнем подключении: %1$s</string>
+    <string name="settings_video_received_unknown">Кодирование последнего подключения: ожидание видео</string>
+    <string name="settings_usb_prompt_quality_experimental">Качество подсказок USB (экспериментально)</string>
+    <string name="settings_usb_prompt_compatible">Совместимость</string>
+    <string name="settings_usb_prompt_clear">Приоритет чёткости</string>
+    <string name="settings_usb_prompt_quality_description">Совместимость сохраняет все форматы подсказок. Приоритет чёткости исключает PCM 8/16 кГц. PCM 48 кГц предлагает iPhone только этот формат и может быть несовместим. Переподключитесь для применения; если звука нет, выберите Приоритет чёткости или Совместимость.</string>
+    <string name="settings_usb_prompt_received">Последняя подсказка USB: %1$s кГц · %2$s · %3$d каналов</string>
+    <string name="settings_usb_prompt_received_unknown">Формат USB-подсказки ещё не получен. Воспроизведите навигационную подсказку для его отображения.</string>
+    <string name="settings_usb_prompt_received_opus">Последняя подсказка USB: Opus · тактовая частота %1$s кГц · декодирование %2$s кГц · %3$d каналов</string>
+    <string name="settings_usb_prompt_previous_connection">Получено при предыдущем подключении: %1$s. При текущем подключении подсказок ещё не было.</string>
+    <string name="settings_usb_prompt_pcm_48">PCM 48 кГц</string>
 </resources>

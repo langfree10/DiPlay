@@ -910,4 +910,32 @@
 
     <string name="settings_hotspot_interface">Interfaz del punto de acceso (opcional)</string>
     <string name="settings_hotspot_interface_description">Solo para unidades que ejecutan su punto de acceso en una interfaz de red que Android no informa como punto de acceso Wi-Fi, por ejemplo eth0.3 en algunas unidades Geely, Lynk &amp; Co y otros Qualcomm. Déjalo vacío para encontrarla automáticamente.</string>
+    <string name="settings_usb_charging_data_only">Solicitar sin carga (solo datos)</string>
+    <string name="settings_usb_data_only_description">Envía al iPhone una solicitud para no cargar en la próxima conexión USB. Puede ignorarla; DiPlay no puede cortar físicamente la alimentación USB. Reconecta para aplicar.</string>
+    <string name="settings_elantra_square_display">Esquinas rectas de CarPlay</string>
+    <string name="settings_elantra_square_display_description">Usa toda la pantalla rectangular. Activado por defecto en este Elantra. Reconecta para aplicar.</string>
+    <string name="settings_siri_usb_reply_experimental">Respuestas de Siri con música Bluetooth (experimental)</string>
+    <string name="settings_siri_usb_reply_description">Mantiene la música por Bluetooth y recibe la voz de Siri por USB. Activado por defecto en este Elantra. Reconecta para aplicar. Si afecta a la música, desactívalo y deja activo el audio Bluetooth del coche.</string>
+    <string name="settings_report_to_usb">Exportar a USB / carpeta</string>
+    <string name="settings_report_usb_description">Selecciona una carpeta de la unidad USB una vez para exportar directamente. No requiere QR ni red. Conserva una copia local.</string>
+    <string name="settings_report_usb_unavailable">La unidad no puede abrir el selector de carpetas. Guarda localmente y copia el informe de Download/DiPlay al USB con un gestor de archivos.</string>
+    <string name="settings_report_usb_saved">Guardado en la carpeta seleccionada: %1$s</string>
+    <string name="settings_report_usb_failed">No se pudo escribir en la carpeta. Copia local en: %1$s. Conecta el USB o selecciona otra carpeta.</string>
+    <string name="settings_report_usb_reselect">Seleccionar otra carpeta</string>
+    <string name="settings_video_codec_experimental">Codificación de vídeo (experimental)</string>
+    <string name="settings_video_h264">H.264 (compatibilidad)</string>
+    <string name="settings_video_hevc">Preferir HEVC (H.265)</string>
+    <string name="settings_video_codec_hint">HEVC es una preferencia, no una garantía. Sin soporte HEVC se usa H.264; el iPhone también puede elegir H.264. Reconecta para aplicar. No se garantiza un menor consumo.</string>
+    <string name="settings_video_frame_rate_hint">Una tasa menor puede reducir el procesamiento de imagen. Este es el límite solicitado; la tasa real varía con la imagen. Reconecta para aplicar.</string>
+    <string name="settings_video_received">Última conexión recibida: %1$s</string>
+    <string name="settings_video_received_unknown">Codificación de la última conexión: esperando vídeo</string>
+    <string name="settings_usb_prompt_quality_experimental">Calidad de avisos USB (experimental)</string>
+    <string name="settings_usb_prompt_compatible">Compatible</string>
+    <string name="settings_usb_prompt_clear">Priorizar claridad</string>
+    <string name="settings_usb_prompt_quality_description">Compatible mantiene todos los formatos de aviso. Priorizar claridad excluye PCM de 8/16 kHz. PCM de 48 kHz ofrece solo ese formato al iPhone y puede ser incompatible. Vuelve a conectar para aplicar; si no hay avisos, elige Priorizar claridad o Compatible.</string>
+    <string name="settings_usb_prompt_received">Último aviso USB: %1$s kHz · %2$s · %3$d canales</string>
+    <string name="settings_usb_prompt_received_unknown">Aún no se ha recibido un formato de aviso USB. Reproduce una indicación de navegación para verlo.</string>
+    <string name="settings_usb_prompt_received_opus">Último aviso USB: Opus · reloj %1$s kHz · decodificado %2$s kHz · %3$d canales</string>
+    <string name="settings_usb_prompt_previous_connection">Recibido en la conexión anterior a las %1$s; aún no hay avisos en esta conexión.</string>
+    <string name="settings_usb_prompt_pcm_48">PCM de 48 kHz</string>
 </resources>

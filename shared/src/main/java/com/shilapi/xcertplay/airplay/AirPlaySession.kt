@@ -705,7 +705,9 @@ class AirPlaySession(
                     }
                 }
                 STREAM_TYPE_MAIN_AUDIO, STREAM_TYPE_ALT_AUDIO, STREAM_TYPE_MAIN_HIGH_AUDIO -> {
-                    val streamResponse = media.onAudio(this, type, stream)
+                    // Bluetooth music stays with the OEM player. The explicit voice-only
+                    // exception may accept Siri speech, never unadvertised music or calls.
+                    val streamResponse = if (config.acceptsAudioStream(stream)) media.onAudio(this, type, stream) else null
                     debugLog(
                         "airplay audio stream type=$type accepted=${streamResponse != null} " +
                             "dataPort=${streamResponse?.get("dataPort") ?: "none"} " +

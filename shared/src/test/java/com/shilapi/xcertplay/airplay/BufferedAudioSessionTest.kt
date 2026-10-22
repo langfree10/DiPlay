@@ -21,6 +21,52 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BufferedAudioSessionTest {
+    @Test fun bluetoothAudioDeclinesAllLegacyAudioBeforeCallingTheMediaHandler() {
+        for (disabled in listOf(false, true)) {
+            val called = mutableListOf<Int>()
+            val session = session(disabled = disabled, media = object : AirPlayMediaHandler {
+                override fun onAudio(session: AirPlaySession, type: Int, stream: Map<String, Any?>): Map<String, Any?> {
+                    called += type
+                    return mapOf("type" to type, "dataPort" to 1234)
+                }
+            })
+            try {
+                val types = listOf(100, 101, 102)
+                val response = handle(session, "SETUP", BplistCodec.encode(mapOf(
+                    "streams" to types.map { mapOf("type" to it) },
+                )))
+                val decoded = BplistCodec.decode(response.body) as Map<*, *>
+                assertEquals(if (disabled) emptyList<Int>() else types, called)
+                assertEquals(if (disabled) 0 else 3, (decoded["streams"] as List<*>).size)
+            } finally { session.close() }
+        }
+    }
+
+    @Test fun bluetoothVoiceExceptionNeverDispatchesMusicTelephonyOrUntypedAudio() {
+        val called = mutableListOf<String>()
+        var buffered = false
+        val session = session(disabled = true, voiceOnly = true, media = object : AirPlayMediaHandler {
+            override fun onAudio(session: AirPlaySession, type: Int, stream: Map<String, Any?>): Map<String, Any?> {
+                called += "$type:${stream["audioType"]}"
+                return mapOf("type" to type, "dataPort" to 1234)
+            }
+            override fun onBufferedAudio(session: AirPlaySession, stream: Map<String, Any?>): Map<String, Any?>? {
+                buffered = true; return null
+            }
+        })
+        try {
+            val streams = (100..102).flatMap { type ->
+                listOf(null, "media", "telephony", "compatibility", "speechRecognition", "default", "alert").map { audio ->
+                    if (audio == null) mapOf("type" to type) else mapOf("type" to type, "audioType" to audio)
+                }
+            } + mapOf("type" to 103, "audioType" to "media")
+            val response = handle(session, "SETUP", BplistCodec.encode(mapOf("streams" to streams)))
+            assertEquals((100..102).flatMap { type -> listOf("$type:speechRecognition", "$type:default", "$type:alert") }, called)
+            assertEquals(9, ((BplistCodec.decode(response.body) as Map<*, *>)["streams"] as List<*>).size)
+            assertTrue(!buffered)
+        } finally { session.close() }
+    }
+
     @Test
     fun disabledOutputDeclinesType103BeforeCallingTheMediaHandler() {
         var setups = 0
@@ -286,14 +332,14 @@ class BufferedAudioSessionTest {
         AirPlaySession::class.java.getDeclaredMethod("handle", RtspMessage.Request::class.java).apply { isAccessible = true }
             .invoke(session, RtspMessage.Request(method, "rtsp://test", "RTSP/1.0", emptyMap(), body)) as RtspMessage.Response
 
-    private fun session(disabled: Boolean = false, media: AirPlayMediaHandler): AirPlaySession = AirPlaySession(
+    private fun session(disabled: Boolean = false, voiceOnly: Boolean = false, media: AirPlayMediaHandler): AirPlaySession = AirPlaySession(
         socket = object : Socket() {
             override fun getRemoteSocketAddress(): SocketAddress = InetSocketAddress(InetAddress.getLoopbackAddress(), 1234)
         },
         config = AirPlayConfig(
             deviceName = "test", deviceId = "02:00:00:00:00:02", btMac = "02:00:00:00:00:01", sourceVersion = "1.0",
             main = AirPlayDisplayConfig(widthPixels = 800, heightPixels = 480),
-            mainBufferedAudio = true, disableAudioOutput = disabled,
+            mainBufferedAudio = true, disableAudioOutput = disabled, bluetoothVoiceAudio = voiceOnly,
         ),
         identity = AirPlayIdentity.generate(), pairings = PairingStore(), mfi = null,
         listener = object : AirPlaySessionListener {}, media = media,
