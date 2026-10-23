@@ -12,7 +12,7 @@ cd DiPlay
 ./gradlew :mobile:assembleDebug
 ```
 
-主应用输出为 `mobile/build/outputs/apk/debug/mobile-debug.apk`，测试包名为 `com.shihab.diplay.hudtest`，当前版本为 `0.2.21-elantra-test12`。
+主应用输出为 `mobile/build/outputs/apk/debug/mobile-debug.apk`，开发包名为 `com.shihab.diplay.hudtest`，开发版本为 `1.0.0-dev`。
 
 ## 认证与签名资料
 
@@ -52,3 +52,15 @@ python3 scripts/check_public_tree.py
 ## 覆盖安装
 
 覆盖安装需要使用与已安装 APK 相同的 Android 签名，并保持版本代码不低于现有版本。另一台机器新生成的默认 debug keystore 通常不同，不能据此保证覆盖已有车测 APK；签名密钥由维护者本地保存。
+
+## 1.0.0 正式安装包
+
+正式构建保持 `com.shihab.diplay.hudtest`，以兼容车上已安装版本；名称为“DiPlay 伊兰特”，versionCode 为 52，versionName 为 1.0.0。发布变体关闭调试，不包含 debug 目录下的测试组件。上游普通 release 包名说明不适用于本 fork 的伊兰特发布变体。
+
+显式设置上述运行资料，以及 `ANDROID_KEYSTORE_PATH`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY_ALIAS`、`ANDROID_KEY_PASSWORD` 后运行：
+
+```sh
+./gradlew :mobile:assembleStandaloneRelease :mobile:lintRelease
+```
+
+输出 `mobile/build/outputs/apk/release/mobile-release.apk`。为了覆盖旧测试包，必须继续使用旧包的签名密钥；仅修改名称或重新生成密钥不能实现覆盖。首次正式版继续使用本机测试阶段的原签名，以保留升级兼容性；“正式版”不表示更换了签名身份。运行资料及签名文件不进入 Git 或公开附件。

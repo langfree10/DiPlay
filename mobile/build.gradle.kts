@@ -17,8 +17,8 @@ android {
         applicationId = "com.shihab.diplay"
         minSdk = 24
         targetSdk = 37
-        versionCode = 51
-        versionName = "0.2.21"
+        versionCode = 52
+        versionName = "1.0.0"
 
     }
 
@@ -40,9 +40,11 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix = ".hudtest"
-            versionNameSuffix = "-elantra-test12"
+            versionNameSuffix = "-dev"
         }
         release {
+            // Preserve the installed Elantra package and its settings when upgrading from test12.
+            applicationIdSuffix = ".hudtest"
             optimization {
                 enable = false
             }
@@ -117,4 +119,11 @@ tasks.register("assembleStandaloneDebug") {
     group = "build"
     description = "Build a standalone car-test APK with explicitly provisioned authentication."
     dependsOn(verifyStandaloneAuthentication, "assembleDebug")
+}
+
+// Same runtime input checks as the development build; Android signing is supplied externally.
+tasks.register("assembleStandaloneRelease") {
+    group = "build"
+    description = "Build the standalone Elantra release with explicitly provisioned authentication."
+    dependsOn(verifyStandaloneAuthentication, "assembleRelease")
 }

@@ -5945,7 +5945,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     /** The text of a diagnostic report. It reads the session logs, so call it off the main thread. */
     private fun diagnosticReportText(appContext: Context): String = buildString {
-        appendLine("DiPlay ${version()} · private beta diagnostic report")
+        appendLine("DiPlay ${version()} · diagnostic report")
         appendLine("Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}")
         appendLine("Head unit: ${Build.MANUFACTURER} ${Build.MODEL}")
         appendLine("Connection: ${if (AirPlayPersistence.loadWirelessEnabled(appContext)) "wireless" else "USB"}")
