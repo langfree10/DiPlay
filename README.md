@@ -26,12 +26,6 @@
 - **Siri 回复可听到**：日志同时记录有效非静音数据、正常播放进度；4 次蓝牙音源恢复均收到原厂焦点确认。
 - 0 mA 请求、直角全屏已实车验证。
 
-正式包名称不再带 test，支持覆盖 test12 并保留设置。1.0.1 调整未设置过的导航音质默认值，保留三个选项及原有设置，使用关闭调试的发布构建。[1.0.1 发布说明](https://github.com/langfree10/DiPlay/blob/elantra/docs/RELEASE-NOTES-ELANTRA-1.0.1.md)。
-
-无线转接盒、其他车机和所有 USB 重连时序尚无足够实车验证。test12 本地检查为 3192 项通过、1 项原有跳过，另三项已知本机网络用例按车主要求排除；正式发布检查见 elantra 分支验证记录，不据此声明远端 CI 已通过。
-
-源码／CI 默认不含配件认证身份。本地运行私钥、Android 签名密钥、个人日志、第三方 APK、固件和实车安装包不随这次源码提交上传。
-
 ## 来源与许可
 
 直接上游为 [DiPlay](https://github.com/shihabal3amri/DiPlay)，接收器基于 [xcertplay](https://github.com/shilapi/xcertplay)，上游界面参考 [DiAuto](https://github.com/shihabal3amri/DiAuto)。保留 [GPL-3.0](LICENSE)、原有 AGPL 标记及[第三方说明](docs/THIRD_PARTY_NOTICES.md)。这是独立维护的适配，现代及 Apple 的名称、图标不代表官方授权或背书。
