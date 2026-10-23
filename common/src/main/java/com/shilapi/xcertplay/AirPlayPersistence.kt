@@ -57,6 +57,13 @@ object AirPlayPersistence {
                 update.putString(KEY_MODEL, "Elantra")
             update.apply()
         }
+        // Use the car-verified format only when no quality choice has ever been saved.
+        // Preserve both explicit legacy choices and the three-way selector on upgrades.
+        if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() &&
+            !prefs.contains(KEY_PROMPT_PCM_48_ONLY) && !prefs.contains(KEY_SPEECH_WITHOUT_8_16_KHZ)) {
+            prefs.edit().putBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, true)
+                .putBoolean(KEY_PROMPT_PCM_48_ONLY, true).apply()
+        }
         return prefs
     }
 
@@ -722,14 +729,14 @@ object AirPlayPersistence {
 
     /** Do not offer 8 and 16 kHz PCM for navigation prompts and alerts; applies at reconnect. */
     fun loadSpeechWithout8And16Khz(context: Context): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, false)
+        audioPreferences(context).getBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, false)
 
     fun saveSpeechWithout8And16Khz(context: Context, enabled: Boolean) {
         saveUsbPromptQuality(context, if (enabled) UsbPromptQuality.CLEAR else UsbPromptQuality.COMPATIBLE)
     }
 
     fun loadUsbPromptQuality(context: Context): UsbPromptQuality {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val prefs = audioPreferences(context)
         return when {
             prefs.getBoolean(KEY_PROMPT_PCM_48_ONLY, false) -> UsbPromptQuality.PCM_48_KHZ
             prefs.getBoolean(KEY_SPEECH_WITHOUT_8_16_KHZ, false) -> UsbPromptQuality.CLEAR

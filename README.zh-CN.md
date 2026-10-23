@@ -7,4 +7,4 @@
 - [实车验证记录](docs/ELANTRA_AUDIO_TEST.md)
 - [上游 DiPlay 中文说明原文](docs/DIPLAY_UPSTREAM_README.zh-CN.md)
 
-直接上游：[shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay)。当前适配基线为 0.2.21，正式版本为 **1.0.0**（已完成 test12 实车验证）。
+直接上游：[shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay)。当前适配基线为 0.2.21，正式版本为 **1.0.1**（已完成 test12 实车验证）。

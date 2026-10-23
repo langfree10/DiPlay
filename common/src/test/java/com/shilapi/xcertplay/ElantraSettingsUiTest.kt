@@ -139,7 +139,7 @@ class ElantraSettingsUiTest {
         assertEquals(listOf(activity.getString(R.string.settings_usb_prompt_compatible),
             activity.getString(R.string.settings_usb_prompt_clear), activity.getString(R.string.settings_usb_prompt_pcm_48)),
             (0 until dialog.listView.adapter.count).map { dialog.listView.adapter.getItem(it).toString() })
-        assertEquals(0, dialog.listView.checkedItemPosition)
+        assertEquals(2, dialog.listView.checkedItemPosition)
         org.robolectric.Shadows.shadowOf(dialog).clickOnItem(1)
         dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
         org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
