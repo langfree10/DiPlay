@@ -1,13 +1,13 @@
 # 构建伊兰特适配版
 
-源码位于 [elantra 分支](https://github.com/langfree10/DiPlay/tree/elantra)，基于上游 0.2.21 的已测试快照。`main` 保留上游跟踪代码，不能据其源码判断伊兰特适配已包含。
+稳定源码位于 [main 主分支](https://github.com/langfree10/DiPlay/tree/main)，基于已验证的上游 0.2.21 伊兰特适配。后续开发在 [elantra 分支](https://github.com/langfree10/DiPlay/tree/elantra)进行，验证通过后合并到 `main`。
 
 ## 环境
 
 使用 JDK 25、Android SDK Platform 37、Build-Tools 36.0.0、Platform-Tools 和 NDK 28.2.13676358。使用仓库中的 Gradle wrapper，并设置 `JAVA_HOME`、`ANDROID_HOME` 或本地 `local.properties`。详细环境说明见[上游构建指南](BUILD.md)。
 
 ```sh
-git clone --branch elantra git@github.com:langfree10/DiPlay.git
+git clone --branch main git@github.com:langfree10/DiPlay.git
 cd DiPlay
 ./gradlew :mobile:assembleDebug
 ```
