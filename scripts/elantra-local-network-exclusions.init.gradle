@@ -1,0 +1,22 @@
+// User-approved exclusions for this workstation's three known IPv6 failures.
+// Keep upstream tests intact and continue running all other network tests.
+def excludedTestsByProject = [
+    ':shared': [
+        'com.shilapi.xcertplay.network.AirPlayDualListenerTest.acceptsBothFamiliesOnTheSamePort',
+        'com.shilapi.xcertplay.network.AirPlayTcpAcceptTest.bothAddressFamiliesReportOwnerAndOldCleanupPreservesNewListener'
+    ],
+    ':common': [
+        'com.shilapi.xcertplay.CarPlayBonjourDualStackTest.dualLanThenSingleP2pThenDualLanServesAirPlayInfo'
+    ]
+]
+
+allprojects { project ->
+    def exclusions = excludedTestsByProject[project.path]
+    if (exclusions != null) {
+        project.tasks.withType(org.gradle.api.tasks.testing.Test).configureEach {
+            exclusions.each { testName ->
+                filter.excludeTestsMatching(testName)
+            }
+        }
+    }
+}

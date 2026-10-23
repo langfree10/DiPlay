@@ -56,10 +56,6 @@
     <string name="preview_oem_label">OEM 标签：</string>
     <string name="preview_empty">（空）</string>
     <string name="preview_frame_rate">帧率：</string>
-    <string name="preview_transport_hevc">HEVC（H.265，%1$s）</string>
-    <string name="preview_decoder_hardware">硬件</string>
-    <string name="preview_decoder_software">软件</string>
-    <string name="preview_list_separator">，</string>
     <string name="preview_detected_maximum">检测到的最大值：</string>
     <string name="preview_physical_reference">物理参考：</string>
     <string name="basis_widest_width">最宽宽度</string>
@@ -92,7 +88,7 @@
     <string name="audio_stream_unavailable">流类型 %1$d 在此不可用（状态=%2$s）</string>
     <string name="resolution_handshake_prefix">握手分辨率：</string>
     <string name="safe_area_full_screen_at">安全区域：全屏，</string>
-    <string name="settings_android9_compat">以下设置在 Android 9（API 28）上不可用且已隐藏：\n• HEVC 软解码器 — 将改用硬件解码。</string>
+    <string name="settings_android9_compat">以下设置在 Android 9（API 28）上不可用且已隐藏：\n• Wi-Fi P2P（5 GHz）— 将改用 LocalOnlyHotspot。\n• HEVC 软解码器 — 将改用硬件解码。</string>
     <string name="settings_mfi_address_hint">地址必须以 http:// 或 https:// 开头。令牌为可选项，将作为 Authorization bearer token 发送。</string>
     <string name="a_familiar_drive">熟悉的驾乘体验。</string>
     <string name="a_previous_wi_fi_direct_connection_is_still_running_reset">之前的 Wi-Fi Direct 连接仍在运行。请重置后再连接。</string>
@@ -204,7 +200,7 @@
     <string name="rect_fill_disable_safe_area_description">请求 iPhone 发送直角的全屏画面。若 CarPlay 在屏幕边缘留下空白条，或在圆角处显示壁纸颜色，可以尝试开启。开启时不使用上方的安全区域。保存并重新连接后生效。</string>
     <string name="safe_area_disabled_rect_fill_summary">安全区域：已关闭（直角铺满）</string>
     <string name="driving_side">驾驶方向</string>
-    <string name="efficient_video">高效视频（HEVC）</string>
+    <string name="efficient_video">高效视频</string>
     <string name="enable_the_car_s_bluetooth_and_pair_your_iphone_first">请先打开车机蓝牙并配对 iPhone。</string>
     <string name="error">错误</string>
     <string name="exit_application">退出应用</string>
@@ -434,8 +430,6 @@
     <string name="option_size_large">大</string>
     <string name="option_size_medium">中</string>
     <string name="option_size_small">小</string>
-    <string name="option_size_custom">自定义</string>
-    <string name="size_option_millimeters">%1$s · %2$d mm</string>
     <string name="option_theme_scenario">场景 · 侧边地图</string>
     <string name="option_theme_map">地图 · 全屏地图</string>
     <string name="option_theme_simple">简约 · 侧边地图</string>
@@ -499,7 +493,6 @@
     <string name="adb_dashboard_does_not_send_map">仪表盘：%1$s，因此 iPhone 不发送地图。</string>
     <string name="adb_not_approved">DiPlay 尚未获得授权。点按“检查 ADB 访问”，然后在车机屏幕上允许 DiPlay。</string>
     <string name="adb_off">网络 ADB 已关闭。请在车机的开发者选项中开启。</string>
-    <string name="adb_network_not_answering">USB 调试已开启，但网络 ADB 没有回应。请在车机的开发者选项中开启网络 ADB；如果已经开启，请关掉再重新打开。</string>
     <string name="adb_pairing_only">此车机仅提供需要配对的无线调试，DiPlay 暂不支持。</string>
     <string name="navi_mode_off">关闭</string>
     <string name="navi_mode_turn_on_by_navi">导航时开启</string>
@@ -557,8 +550,6 @@
     <string name="video_while_parked_description">iOS 27：在 iPhone 上投送到 CarPlay 的视频会在车辆处于 P 挡时在车机屏幕上播放。挂出 P 挡时播放器会关闭；没有 ADB 时视频保持关闭，iPhone 只播放声音。普通 HTTPS 视频（例如来自 Safari）可以播放；受 FairPlay 保护的视频（例如 Apple TV+）需要获得授权的接收器，在这里无法播放。会重新连接 CarPlay。需要车机开启网络 ADB。</string>
     <string name="cluster_song">仪表盘显示歌曲</string>
     <string name="cluster_song_description">CarPlay 正在播放的歌曲名和歌手会显示在仪表盘的音乐卡片中，并同步播放和暂停状态。卡片以比亚迪的“其他”音源显示，因为仪表盘不会绘制 CarPlay 自身的音源。立即生效。需要车机开启网络 ADB。</string>
-    <string name="cluster_song_gate">自动激活音乐卡片</string>
-    <string name="cluster_song_gate_description">音乐卡片默认不显示，必须车机的媒体栈先被激活过才显示。打开此开关会替你激活媒体栈，过程中媒体界面会短暂盖屏，随后回到 DiPlay。关闭可避免这一闪屏，立即生效。</string>
     <string name="video_back_to_carplay">返回 CarPlay</string>
     <string name="video_play">播放</string>
     <string name="video_pause">暂停</string>
@@ -877,7 +868,6 @@
     <string name="setup_iphone_none">尚未选择 iPhone</string>
     <string name="setup_features_title">功能</string>
     <string name="setup_features_description">为 %1$s 推荐。现在开启你需要的功能；所有选项都保留在设置中，之后可随时更改。</string>
-    <string name="setup_features_description_unknown">现在开启你需要的功能；所有选项都保留在设置中，之后可随时更改。</string>
     <string name="setup_cluster_route_conflict">DiLink 4 仪表路线已开启。在 DiLink 3 上，它会阻止 CarPlay 地图显示在仪表上。</string>
     <string name="setup_cluster_route_turn_off">关闭它</string>
     <string name="setup_badge_tested">已在部分车辆上测试</string>
@@ -980,10 +970,32 @@
 
     <string name="settings_hotspot_interface">热点网络接口（可选）</string>
     <string name="settings_hotspot_interface_description">仅用于把热点放在 Android 不认为是 Wi-Fi 热点的网络接口上的车机，例如部分吉利、领克及其它高通车机上的 eth0.3。留空则自动查找。</string>
-    <string name="cluster_projection_shape">仪表盘地图形态</string>
-    <string name="cluster_projection_shape_half">半屏（小屏导航）</string>
-    <string name="cluster_projection_shape_full">全屏（全屏导航）</string>
-    <string name="cluster_projection_shape_description">半屏会在仪表盘地图旁保留仪表原本的车速与状态信息；全屏则让地图占满整个仪表盘。CarPlay 地图出现时 DiPlay 会设置该形态，否则会覆盖你在车机上选好的导航模式。需要车机已授权网络 ADB。</string>
-    <string name="settings_cluster_speedometer_album_color">速度表背景使用专辑颜色</string>
-    <string name="settings_cluster_speedometer_album_color_description">平滑过渡到专辑边框的颜色，并保留所选的不透明度。</string>
+    <string name="settings_usb_charging_data_only">请求不充电（只传数据）</string>
+    <string name="settings_usb_data_only_description">下次 USB 连接时向 iPhone 请求不充电。手机可能不接受；DiPlay 无法物理切断 USB 供电。重新连接后生效。</string>
+    <string name="settings_elantra_square_display">CarPlay 直角显示</string>
+    <string name="settings_elantra_square_display_description">使用完整的矩形屏幕，伊兰特默认开启。重新连接后生效。</string>
+    <string name="settings_siri_usb_reply_experimental">蓝牙音乐时的 Siri 回复（实验性）</string>
+    <string name="settings_siri_usb_reply_description">音乐继续走蓝牙，Siri 语音通过 USB 播放。此车默认开启，重新连接生效。若音乐受影响，可关闭此项，并保留“汽车蓝牙音频”开启。</string>
+    <string name="settings_report_to_usb">导出到 U 盘/文件夹</string>
+    <string name="settings_report_usb_description">首次选择 U 盘内的文件夹，之后可直接导出。无需扫码或联网，并保留一份本地日志。</string>
+    <string name="settings_report_usb_unavailable">车机无法打开文件夹选择器。请先保存本地，再用文件管理器把 Download/DiPlay 中的日志复制到 U 盘。</string>
+    <string name="settings_report_usb_saved">已保存到所选文件夹：%1$s</string>
+    <string name="settings_report_usb_failed">未能写入所选文件夹。本地日志已保留：%1$s。请连接 U 盘或重新选择文件夹。</string>
+    <string name="settings_report_usb_reselect">重新选择文件夹</string>
+    <string name="settings_video_codec_experimental">视频编码（实验性）</string>
+    <string name="settings_video_h264">H.264（兼容优先）</string>
+    <string name="settings_video_hevc">HEVC 优先（H.265）</string>
+    <string name="settings_video_codec_hint">HEVC 是优先选项，并非强制。车机未提供 HEVC 支持时使用 H.264，手机也可能选择 H.264。重新连接生效，不保证更省电。</string>
+    <string name="settings_video_frame_rate_hint">较低帧率可减少画面处理负担。此值是请求上限，实际帧率随画面变化；重新连接生效。</string>
+    <string name="settings_video_received">最近连接收到：%1$s</string>
+    <string name="settings_video_received_unknown">最近连接编码：尚未收到视频</string>
+    <string name="settings_usb_prompt_quality_experimental">USB 提示音质（实验性）</string>
+    <string name="settings_usb_prompt_compatible">兼容</string>
+    <string name="settings_usb_prompt_clear">清晰优先</string>
+    <string name="settings_usb_prompt_quality_description">兼容保留所有提示音格式；清晰优先排除 8/16 kHz PCM；48 kHz PCM 仅向手机提供该提示音格式，可能不兼容。重新连接后生效；如播报无声，请改回清晰优先或兼容。</string>
+    <string name="settings_usb_prompt_received">最近收到的 USB 提示音：%1$s kHz · %2$s · %3$d 声道</string>
+    <string name="settings_usb_prompt_received_unknown">尚未收到过 USB 提示音格式；播放一次导航播报后会显示。</string>
+    <string name="settings_usb_prompt_received_opus">最近收到的 USB 提示音：Opus · 时钟 %1$s kHz · 解码 %2$s kHz · %3$d 声道</string>
+    <string name="settings_usb_prompt_previous_connection">上次连接收到，时间：%1$s；本次连接尚未收到提示音。</string>
+    <string name="settings_usb_prompt_pcm_48">48 kHz PCM</string>
 </resources>

@@ -53,6 +53,8 @@ class WheelMediaKeyWindowTest {
     }
 
     @After fun tearDown() {
+        CarPlayMediaKeys.detach(controller)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
         for (name in listOf("teardownExecutor", "airPlayCommandExecutor")) {
             (host.javaClass.getDeclaredField(name).apply { isAccessible = true }.get(host) as ExecutorService).shutdownNow()
         }
@@ -61,6 +63,117 @@ class WheelMediaKeyWindowTest {
         BydCarPlayCall.end()
         CarPlayBackgroundSession.clear()
         host.getSharedPreferences("xcertplay_airplay", Context.MODE_PRIVATE).edit().clear().commit()
+    }
+
+    @Test fun elantraThirdPartyTrackKeysAreConsumedAndSendOnceOnReleaseWithoutFocus() = withElantra {
+        assertTrue(AirPlayPersistence.loadDisableMediaKeyAudioFocus(host))
+        assertFalse(AirPlayPersistence.loadAudioFocusEnabled(host))
+        for ((code, expected) in listOf(274 to CarPlayMediaButton.PREVIOUS, 275 to CarPlayMediaButton.NEXT)) {
+            assertTrue(host.dispatchKeyEvent(key(code, true)))
+            assertTrue(host.dispatchKeyEvent(key(code, true, repeat = 1)))
+            verify(controller, never()).sendMediaButton(expected)
+            assertTrue(host.dispatchKeyEvent(key(code, false)))
+            verify(controller, times(1)).sendMediaButton(expected)
+        }
+        assertFalse(host.dispatchKeyEvent(key(KeyEvent.KEYCODE_VOLUME_UP, true)))
+        assertFalse(host.dispatchKeyEvent(key(KeyEvent.KEYCODE_VOLUME_DOWN, true)))
+        verify(controller, times(2)).sendMediaButton(anyInt())
+    }
+
+    @Test fun elantraTrackKeysWorkInBluetoothModeButLeaveCallsAndDisconnectedSessionsAlone() = withElantra {
+        // Establish migration before explicitly choosing Bluetooth.
+        assertFalse(AirPlayPersistence.loadCarBluetoothAudio(host))
+        AirPlayPersistence.saveCarBluetoothAudio(host, true)
+        assertTrue(host.dispatchKeyEvent(key(274, true)))
+        assertTrue(host.dispatchKeyEvent(key(274, false)))
+        verify(controller, times(1)).sendMediaButton(CarPlayMediaButton.PREVIOUS)
+        clearInvocations(controller)
+        AirPlayPersistence.saveCarBluetoothAudio(host, false)
+        field("activeAirPlaySession", null)
+        assertFalse(host.dispatchKeyEvent(key(275, true)))
+        field("activeAirPlaySession", mock(AirPlaySession::class.java))
+        host.getSystemService(AudioManager::class.java).mode = AudioManager.MODE_IN_CALL
+        assertFalse(host.dispatchKeyEvent(key(275, true)))
+        verify(controller, never()).sendMediaButton(anyInt())
+    }
+
+    @Test fun nativeBluetoothFocusDoesNotBlockEitherOemOrStandardWindowTrackKeys() = withElantra {
+        for (bluetooth in listOf(false, true)) {
+            AirPlayPersistence.saveCarBluetoothAudio(host, bluetooth)
+            for (source in listOf(8, 9)) {
+                android.provider.Settings.Global.putInt(host.contentResolver, ElantraVoiceSourceReturn.LAST_MODE, source)
+                for (focus in listOf(1, 2)) {
+                    android.provider.Settings.Global.putInt(host.contentResolver, "android.extension.car.BT_AUDIO_FOCUS_STATE", focus)
+                    for (code in listOf(274, 275, KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS)) {
+                        assertTrue(host.dispatchKeyEvent(key(code, true)))
+                        assertTrue(host.dispatchKeyEvent(key(code, false)))
+                    }
+                }
+            }
+        }
+        verify(controller, times(16)).sendMediaButton(CarPlayMediaButton.NEXT)
+        verify(controller, times(16)).sendMediaButton(CarPlayMediaButton.PREVIOUS)
+    }
+
+    @Test fun windowAndRealMediaCallbackShareOneTrackDeliveryInBothOrders() = withElantra {
+        AirPlayPersistence.saveCarBluetoothAudio(host, false)
+        `when`(controller.nowPlayingSnapshot()).thenReturn(com.shilapi.xcertplay.media.CarPlayNowPlaying())
+        CarPlayMediaKeys.attach(host, controller)
+        CarPlayMediaKeys.onMediaAudioChanged(true)
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        android.provider.Settings.Global.putInt(host.contentResolver, ElantraVoiceSourceReturn.LAST_MODE, 8)
+        android.provider.Settings.Global.putInt(host.contentResolver, "android.extension.car.BT_AUDIO_FOCUS_STATE", 2)
+        val callback = org.robolectric.util.ReflectionHelpers.getField<CarPlayMediaCallback>(CarPlayMediaKeys, "callback")
+        host.dispatchKeyEvent(key(275, true))
+        host.dispatchKeyEvent(key(275, false))
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(30))
+        callback.onSkipToNext()
+        verify(controller, times(1)).sendMediaButton(CarPlayMediaButton.NEXT)
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(200))
+        callback.onSkipToPrevious()
+        org.robolectric.shadows.ShadowSystemClock.advanceBy(java.time.Duration.ofMillis(30))
+        host.dispatchKeyEvent(key(274, true))
+        host.dispatchKeyEvent(key(274, false))
+        verify(controller, times(1)).sendMediaButton(CarPlayMediaButton.PREVIOUS)
+    }
+
+    @Test fun releaseOnlyAndMismatchedOemTimestampsStillSendTrack() = withElantra {
+        assertTrue(host.dispatchKeyEvent(KeyEvent(0, 1, KeyEvent.ACTION_UP, 275, 0)))
+        assertTrue(host.dispatchKeyEvent(KeyEvent(100, 100, KeyEvent.ACTION_DOWN, 275, 0)))
+        assertTrue(host.dispatchKeyEvent(KeyEvent(200, 201, KeyEvent.ACTION_UP, 275, 0)))
+        verify(controller, times(2)).sendMediaButton(CarPlayMediaButton.NEXT)
+    }
+
+    @Test fun hostEnablesTemporarySiriFocusWithEitherTransportSettingAndHonoursVoiceOptOut() = withElantra {
+        AirPlayPersistence.saveAudioFocusEnabled(host, false)
+        for (bluetooth in listOf(false, true)) {
+            AirPlayPersistence.saveCarBluetoothAudio(host, bluetooth)
+            for (voice in listOf(true, false)) {
+                AirPlayPersistence.saveElantraBluetoothVoice(host, voice)
+                val sink = host.javaClass.getDeclaredMethod("createMediaSink", Int::class.javaPrimitiveType,
+                    Int::class.javaPrimitiveType, Int::class.javaPrimitiveType).apply { isAccessible = true }
+                    .invoke(host, 1920, 720, 0) as com.shilapi.xcertplay.media.AndroidMediaSink
+                try {
+                    val coordinator = sink.javaClass.getDeclaredField("audioFocusCoordinator")
+                        .apply { isAccessible = true }.get(sink)
+                    assertEquals(voice, coordinator.javaClass.getDeclaredField("assistantOnly")
+                        .apply { isAccessible = true }.get(coordinator))
+                    assertEquals(bluetooth && voice, coordinator.javaClass.getDeclaredField("voiceStreamsOnly")
+                        .apply { isAccessible = true }.get(coordinator))
+                } finally { sink.close() }
+            }
+        }
+    }
+
+    private fun withElantra(action: () -> Unit) {
+        val manufacturer = android.os.Build.MANUFACTURER
+        val model = android.os.Build.MODEL
+        org.robolectric.shadows.ShadowBuild.setManufacturer("humaxdigital")
+        org.robolectric.shadows.ShadowBuild.setModel("BHCN-T3103C")
+        try { action() } finally {
+            org.robolectric.shadows.ShadowBuild.setManufacturer(manufacturer)
+            org.robolectric.shadows.ShadowBuild.setModel(model)
+        }
     }
 
     @Test fun theWheelTrackKeysReachCarPlay() {

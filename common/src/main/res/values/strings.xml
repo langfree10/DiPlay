@@ -56,10 +56,6 @@
     <string name="preview_oem_label">OEM label:\u0020</string>
     <string name="preview_empty">(empty)</string>
     <string name="preview_frame_rate">Frame rate:\u0020</string>
-    <string name="preview_transport_hevc">HEVC (H.265, %1$s)</string>
-    <string name="preview_decoder_hardware">hardware</string>
-    <string name="preview_decoder_software">software</string>
-    <string name="preview_list_separator">,\u0020</string>
     <string name="preview_detected_maximum">Detected maximum:\u0020</string>
     <string name="preview_physical_reference">Physical reference:\u0020</string>
     <string name="basis_widest_width">widest width</string>
@@ -93,7 +89,7 @@
     <string name="resolution_handshake_prefix">Handshake resolution:\u0020</string>
     <string name="safe_area_full_screen_at">Safe area: full screen at\u0020</string>
     <string name="safe_area_mapping_summary">Safe area: %1$d x %2$d at (%3$d, %4$d) in %5$d x %6$d</string>
-    <string name="settings_android9_compat">The following settings are unavailable and hidden on Android 9 (API 28):\n• HEVC software decoder — hardware decoding is used instead.</string>
+    <string name="settings_android9_compat">The following settings are unavailable and hidden on Android 9 (API 28):\n• Wi-Fi P2P (5 GHz) — LocalOnlyHotspot is used instead.\n• HEVC software decoder — hardware decoding is used instead.</string>
     <string name="settings_mfi_address_hint">Address must start with http:// or https://. Token is optional and sent as an Authorization bearer token.</string>
     <string name="app_name">DiPlay</string>
     <string name="language_section_title">Language</string>
@@ -210,7 +206,7 @@
     <string name="rect_fill_disable_safe_area_description">Asks the iPhone for a full-screen picture with square corners. Try it when CarPlay leaves a strip at an edge or shows the wallpaper color in its rounded corners. The safe area above is not used while this is on. Applies after Save and reconnect.</string>
     <string name="safe_area_disabled_rect_fill_summary">Safe area: off (square corners, full screen)</string>
     <string name="driving_side">Driving side</string>
-    <string name="efficient_video">Efficient video (HEVC)</string>
+    <string name="efficient_video">Efficient video</string>
     <string name="enable_the_car_s_bluetooth_and_pair_your_iphone_first">Enable the car’s Bluetooth and pair your iPhone first.</string>
     <string name="error">Error</string>
     <string name="exit_application">EXIT APPLICATION</string>
@@ -474,8 +470,6 @@
     <string name="option_size_large">Large</string>
     <string name="option_size_medium">Medium</string>
     <string name="option_size_small">Small</string>
-    <string name="option_size_custom">Custom</string>
-    <string name="size_option_millimeters">%1$s · %2$d mm</string>
     <string name="option_theme_scenario">Scenario · side map</string>
     <string name="option_theme_map">Map · full map</string>
     <string name="option_theme_simple">Simple · side map</string>
@@ -539,7 +533,6 @@
     <string name="adb_dashboard_does_not_send_map">Dashboard: %1$s, so the iPhone does not send the map.</string>
     <string name="adb_not_approved">DiPlay is not approved yet. Tap Check ADB access, then allow DiPlay on the car screen.</string>
     <string name="adb_off">ADB over network is off. Turn it on in the head unit’s developer options.</string>
-    <string name="adb_network_not_answering">USB debugging is on, but ADB over network does not answer. Turn ADB over network on in the head unit’s developer options. If it is already on, turn it off and on again.</string>
     <string name="adb_pairing_only">This head unit offers only wireless debugging with pairing, which DiPlay does not support yet.</string>
     <string name="navi_mode_off">Off</string>
     <string name="navi_mode_turn_on_by_navi">Turn on by navi</string>
@@ -597,8 +590,6 @@
     <string name="video_while_parked_description">iOS 27: a video you send to CarPlay on the iPhone plays on the car screen while the car is in P. The player closes when you shift out of P; without ADB video stays off and the iPhone plays audio only. Plain HTTPS video (for example from Safari) plays; video protected with FairPlay, such as Apple TV+, needs a licensed receiver and does not play here. Reconnects CarPlay. Needs ADB over network on the head unit.</string>
     <string name="cluster_song">Song on the dashboard</string>
     <string name="cluster_song_description">The CarPlay song title and artist appear in the music card on the instrument cluster, with play and pause. The card shows as BYD’s “Other” music source, because the dashboard does not draw CarPlay’s own source. Applies at once. Needs ADB over network on the head unit.</string>
-    <string name="cluster_song_gate">Auto-activate music card</string>
-    <string name="cluster_song_gate_description">The card stays hidden until the car’s media stack has been opened. Opening the gate does that, which briefly brings the media screen to the front and then returns to DiPlay. Leave it off to skip the screen flash. Applies at once.</string>
     <string name="video_back_to_carplay">Back to CarPlay</string>
     <string name="video_play">Play</string>
     <string name="video_pause">Pause</string>
@@ -920,7 +911,6 @@
     <string name="setup_iphone_none">No iPhone chosen yet</string>
     <string name="setup_features_title">Features</string>
     <string name="setup_features_description">Suggested for %1$s. Turn on what you want now; everything stays in Settings and can be changed later.</string>
-    <string name="setup_features_description_unknown">Turn on what you want now; everything stays in Settings and can be changed later.</string>
     <string name="setup_cluster_route_conflict">The DiLink 4 cluster route is on. On DiLink 3 it stops the CarPlay map on the dashboard.</string>
     <string name="setup_cluster_route_turn_off">Turn it off</string>
     <string name="setup_badge_tested">Tested on some cars</string>
@@ -1023,10 +1013,32 @@
 
     <string name="settings_hotspot_interface">Hotspot interface (optional)</string>
     <string name="settings_hotspot_interface_description">Only for head units that run their hotspot on a network interface Android does not report as a Wi-Fi hotspot, for example eth0.3 on some Geely, Lynk &amp; Co and other Qualcomm units. Leave empty to find it automatically.</string>
-    <string name="cluster_projection_shape">Dashboard map shape</string>
-    <string name="cluster_projection_shape_half">Half screen</string>
-    <string name="cluster_projection_shape_full">Full screen</string>
-    <string name="cluster_projection_shape_description">Half screen keeps the speed and status readouts the cluster normally shows beside the map; full screen lets the map fill the cluster. DiPlay sets the shape whenever the CarPlay map appears, which otherwise overrides the shape picked on the car. Needs ADB over network on the head unit.</string>
-    <string name="settings_cluster_speedometer_album_color">Use album color for speedometer background</string>
-    <string name="settings_cluster_speedometer_album_color_description">Match the album frame color with smooth transitions. Keeps the selected opacity.</string>
+    <string name="settings_usb_charging_data_only">Request no charging (data only)</string>
+    <string name="settings_usb_data_only_description">Sends a no-charging request to the iPhone at the next USB connection. The iPhone may ignore it; DiPlay cannot physically disconnect USB power. Reconnect to apply.</string>
+    <string name="settings_elantra_square_display">Square CarPlay corners</string>
+    <string name="settings_elantra_square_display_description">Uses the whole rectangular screen. Enabled by default on this Elantra. Reconnect to apply.</string>
+    <string name="settings_siri_usb_reply_experimental">Siri replies with Bluetooth music (experimental)</string>
+    <string name="settings_siri_usb_reply_description">Keeps music on Bluetooth and receives Siri voice over USB. Enabled by default on this Elantra. Reconnect to apply. If music is affected, turn this off and leave Car Bluetooth audio on.</string>
+    <string name="settings_report_to_usb">Export to USB drive / folder</string>
+    <string name="settings_report_usb_description">Select a folder on the USB drive once, then export there directly. No QR code or network is needed. A local copy is kept.</string>
+    <string name="settings_report_usb_unavailable">This head unit cannot open the folder picker. Save locally, then copy the report from Download/DiPlay to the USB drive using a file manager.</string>
+    <string name="settings_report_usb_saved">Saved in the selected folder: %1$s</string>
+    <string name="settings_report_usb_failed">Could not write to the selected folder. Local report kept at: %1$s. Connect the USB drive or select another folder.</string>
+    <string name="settings_report_usb_reselect">Select another folder</string>
+    <string name="settings_video_codec_experimental">Video encoding (experimental)</string>
+    <string name="settings_video_h264">H.264 (compatibility)</string>
+    <string name="settings_video_hevc">Prefer HEVC (H.265)</string>
+    <string name="settings_video_codec_hint">HEVC is a preference, not a guarantee. H.264 is used without HEVC support, and the iPhone may also choose H.264. Reconnect to apply. Lower power use is not guaranteed.</string>
+    <string name="settings_video_frame_rate_hint">Lower frame rates can reduce picture processing. This is the requested limit; actual frames vary with the picture. Reconnect to apply.</string>
+    <string name="settings_video_received">Last connection received: %1$s</string>
+    <string name="settings_video_received_unknown">Last connection encoding: waiting for video</string>
+    <string name="settings_usb_prompt_quality_experimental">USB prompt quality (experimental)</string>
+    <string name="settings_usb_prompt_compatible">Compatible</string>
+    <string name="settings_usb_prompt_clear">Clarity preferred</string>
+    <string name="settings_usb_prompt_quality_description">Compatible keeps all prompt formats. Clarity preferred excludes 8/16 kHz PCM. 48 kHz PCM offers only that prompt format to the iPhone and may be incompatible. Reconnect to apply; if prompts go silent, choose Clarity preferred or Compatible.</string>
+    <string name="settings_usb_prompt_received">Last USB prompt: %1$s kHz · %2$s · %3$d channels</string>
+    <string name="settings_usb_prompt_received_unknown">No USB prompt format received yet. Play a navigation prompt to show it.</string>
+    <string name="settings_usb_prompt_received_opus">Last USB prompt: Opus · %1$s kHz clock · %2$s kHz decoded · %3$d channels</string>
+    <string name="settings_usb_prompt_previous_connection">Received in the previous connection at %1$s; no prompt received in this connection yet.</string>
+    <string name="settings_usb_prompt_pcm_48">48 kHz PCM</string>
 </resources>

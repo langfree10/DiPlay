@@ -279,15 +279,8 @@ class CarPlayBonjour(
                         "Interface mDNS requires a local advertised address"
                     }
                     // A JmDNS instance joins only its address family's multicast group.
-                    val hostName = "carplay-${config.deviceId.replace(":", "")}"
                     for (address in advertisedAddresses) {
-                        // Cache the local name to avoid reverse DNS while preserving the IPv6 scope.
-                        val mdnsAddress = if (address is Inet6Address) {
-                            Inet6Address.getByAddress(hostName, address.address, address.scopeId)
-                        } else {
-                            InetAddress.getByAddress(hostName, address.address)
-                        }
-                        val dns = JmDNS.create(mdnsAddress, hostName)
+                        val dns = JmDNS.create(address, "carplay-${config.deviceId.replace(":", "")}")
                         interfaceMdns.add(dns)
                         dns.addServiceListener("$CARPLAY_CONTROL_SERVICE_TYPE.local.", interfaceListener)
                         dns.registerService(ServiceInfo.create(

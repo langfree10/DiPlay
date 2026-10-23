@@ -99,8 +99,6 @@ class AirPlaySession(
     private var pendingNightMode: Boolean? = null
     private val firstTouchSendLogged = AtomicBoolean(false)
     private val touchSendFailureLogged = AtomicBoolean(false)
-    // Only the controller's single touch thread calls sendTouch.
-    private val touchSlots = AirPlayTouchSlots(AirPlayHid.TOUCH_CONTACTS)
     private val ntp = NtpClock()
     private var keepAliveSocket: DatagramSocket? = null
     private var keepAliveThread: Thread? = null
@@ -334,9 +332,8 @@ class AirPlaySession(
         }
     }
 
-    /** [contacts] carry Android pointer ids; an empty list releases every finger. */
     fun sendTouch(contacts: List<AirPlayContact>): Boolean {
-        val scaled = touchSlots.assign(contacts).map {
+        val scaled = contacts.map {
             it.copy(x = it.x * config.main.widthPixels, y = it.y * config.main.heightPixels)
         }
         val report = AirPlayHid.touchReport(scaled)
@@ -708,7 +705,9 @@ class AirPlaySession(
                     }
                 }
                 STREAM_TYPE_MAIN_AUDIO, STREAM_TYPE_ALT_AUDIO, STREAM_TYPE_MAIN_HIGH_AUDIO -> {
-                    val streamResponse = media.onAudio(this, type, stream)
+                    // Bluetooth music stays with the OEM player. The explicit voice-only
+                    // exception may accept Siri speech, never unadvertised music or calls.
+                    val streamResponse = if (config.acceptsAudioStream(stream)) media.onAudio(this, type, stream) else null
                     debugLog(
                         "airplay audio stream type=$type accepted=${streamResponse != null} " +
                             "dataPort=${streamResponse?.get("dataPort") ?: "none"} " +

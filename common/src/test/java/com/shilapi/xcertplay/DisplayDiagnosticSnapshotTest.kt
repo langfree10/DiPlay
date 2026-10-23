@@ -57,4 +57,19 @@ class DisplayDiagnosticSnapshotTest {
         assertFalse(report.contains("secret"))
         assertTrue(report.lines().all { it.length <= 700 })
     }
+    @Test fun receivedCodecDoesNotFollowTheSavedPreferenceAndResetsForANewAttempt() {
+        val attempt = DisplayDiagnosticSnapshot.begin(context, "request", "capability", "effective")
+        assertNull(DisplayDiagnosticSnapshot.lastReceivedCodec(context))
+        AirPlayPersistence.saveHevcEnabled(context, true)
+        DisplayDiagnosticSnapshot.recordReceivedCodec(context, attempt, com.shilapi.xcertplay.airplay.VideoCodec.H264)
+        assertEquals("H.264", DisplayDiagnosticSnapshot.lastReceivedCodec(context))
+        assertTrue(DisplayDiagnosticSnapshot.report(context).contains("Received main video codec=H.264"))
+        val replacement = DisplayDiagnosticSnapshot.begin(context, "new", "capability", "effective")
+        assertNull(DisplayDiagnosticSnapshot.lastReceivedCodec(context))
+        DisplayDiagnosticSnapshot.recordReceivedCodec(context, attempt, com.shilapi.xcertplay.airplay.VideoCodec.H265)
+        assertNull(DisplayDiagnosticSnapshot.lastReceivedCodec(context))
+        DisplayDiagnosticSnapshot.recordReceivedCodec(context, replacement, com.shilapi.xcertplay.airplay.VideoCodec.H265)
+        assertEquals("HEVC (H.265)", DisplayDiagnosticSnapshot.lastReceivedCodec(context))
+    }
+
 }

@@ -23,6 +23,19 @@ class CarPlayMediaCallbackTest {
     private val sent = mutableListOf<Int>()
     private val callback = CarPlayMediaCallback { index, _ -> sent += index }
 
+    @Test fun thirdPartyElantraKeysSendOnReleaseAndIgnoreCanceledRelease() {
+        val elantra = CarPlayMediaCallback(elantraKeys = { true }) { index, _ -> sent += index }
+        for ((code, expected) in listOf(274 to CarPlayMediaButton.PREVIOUS, 275 to CarPlayMediaButton.NEXT)) {
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, code, 0)))
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 1, KeyEvent.ACTION_DOWN, code, 1)))
+            assertEquals(0, sent.count { it == expected })
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 2, KeyEvent.ACTION_UP, code, 0)))
+            assertEquals(1, sent.count { it == expected })
+            elantra.onMediaButtonEvent(button(KeyEvent(0, 3, KeyEvent.ACTION_UP, code, 0, 0, 0, 0, KeyEvent.FLAG_CANCELED)))
+            assertEquals(1, sent.count { it == expected })
+        }
+    }
+
     @Test
     fun controllerPlayAndPauseAreExplicit() {
         callback.onPlay()
@@ -57,22 +70,6 @@ class CarPlayMediaCallbackTest {
         enabled = false
         experimental.onMediaButtonEvent(key)
         assertEquals(listOf(CarPlayMediaButton.PLAY_PAUSE), sent)
-    }
-
-    // #610: a car's own code for a wheel key must show in the report, not look like no key at all.
-    @Test fun aButtonCarPlayDoesNotUseIsNotedOncePerPress() {
-        val notUsed = mutableListOf<String>()
-        val callback = CarPlayMediaCallback(notUsed = { notUsed += it }) { index, _ -> sent += index }
-        val skip = KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, skip, 0)))
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, skip, 1)))
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_UP, skip, 0)))
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, 0)))
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, 331, 0)))
-        callback.onMediaButtonEvent(button(KeyEvent(0, 0, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_NEXT, 0)))
-
-        assertEquals(listOf(skip, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, 331).map(KeyEvent::keyCodeToString), notUsed)
-        assertEquals(listOf(CarPlayMediaButton.NEXT), sent)
     }
 
     @Test

@@ -49,7 +49,9 @@ object CarPlayMediaButton {
         keyCode == KEYCODE_BYD_CARPLAY_VOICE || keyCode == KEYCODE_BYD_AUTO_MEDIA_VOICE
 
     /** The CarPlay press for [keyCode], or null when the key is not a media key CarPlay handles. */
-    fun forKeyCode(keyCode: Int, experimentalDiLink3Keys: Boolean = false): Int? = when (keyCode) {
+    fun forKeyCode(keyCode: Int, experimentalDiLink3Keys: Boolean = false, elantraKeys: Boolean = false): Int? = when (keyCode) {
+        KeyEvent.KEYCODE_MEDIA_STEP_FORWARD -> if (elantraKeys) PREVIOUS else null
+        KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD -> if (elantraKeys) NEXT else null
         KeyEvent.KEYCODE_MEDIA_NEXT -> NEXT
         KeyEvent.KEYCODE_MEDIA_PREVIOUS -> PREVIOUS
         KeyEvent.KEYCODE_MEDIA_PLAY,
@@ -78,12 +80,25 @@ object CarPlayMediaButton {
         keyCode: Int,
         sessionActive: Boolean,
         inCall: Boolean,
+        elantraKeys: Boolean = false,
+        nativeBluetoothAudio: Boolean = false,
     ): Int? {
         if (!sessionActive || inCall) return null
         return when (keyCode) {
-            KeyEvent.KEYCODE_MEDIA_NEXT -> NEXT
-            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> PREVIOUS
+            KeyEvent.KEYCODE_MEDIA_STEP_FORWARD -> if (elantraKeys) PREVIOUS else null
+            KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD -> if (elantraKeys) NEXT else null
+            KeyEvent.KEYCODE_MEDIA_NEXT -> if (nativeBluetoothAudio) null else NEXT
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS -> if (nativeBluetoothAudio) null else PREVIOUS
             else -> null
         }
+    }
+
+    /** The third-party CarLife's physical 274/275 tasks fire on release, once per tap. */
+    fun sendsOnEvent(event: KeyEvent, elantraKeys: Boolean = false): Boolean {
+        if (event.isCanceled) return false
+        val release = elantraKeys && (event.keyCode == KeyEvent.KEYCODE_MEDIA_STEP_FORWARD ||
+            event.keyCode == KeyEvent.KEYCODE_MEDIA_STEP_BACKWARD)
+        return if (release) event.action == KeyEvent.ACTION_UP
+        else event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0
     }
 }

@@ -232,6 +232,8 @@ class CarPlayController(
     private val usbAdbGrantAttempts = mutableSetOf<String>()
     private val pendingUsbAdbGrants = mutableSetOf<String>()
     private var lastReportedStatus: CarPlayStatus? = null
+    private val controllerStartedAtMillis = android.os.SystemClock.elapsedRealtime()
+    private var previousStatusAtMillis = controllerStartedAtMillis
     private var mfiResetLogged = false
 
     @Volatile private var closed = false
@@ -287,8 +289,6 @@ class CarPlayController(
     @Volatile private var instantBluetoothLink: InstantBluetoothLink? = null
     @Volatile private var firstTcpWatchdog: FirstTcpWatchdog? = null
     @Volatile private var wiredStartWatchdog: WiredStartWatchdog? = null
-    @Volatile private var wiredSessionActive = false
-    @Volatile private var wiredStartSentAtNanos: Long? = null
     @Volatile private var wirelessPublishedAddress: InetAddress? = null
     @Volatile private var wirelessAlternateAddress: InetAddress? = null
     @Volatile private var wirelessAddressRecovery: HotspotAddressRecovery? = null
@@ -334,9 +334,6 @@ class CarPlayController(
     private data class SessionCornerMask(val session: AirPlaySession, val png: ByteArray, val width: Int)
     @Volatile private var currentCornerMask: SessionCornerMask? = null
 
-    /** The live AirPlay session, for a new host that adopts the running stream without a session-active callback. */
-    fun activeAirPlaySession(): AirPlaySession? = activeSession?.takeIf { !closed && !it.isClosed }
-
     /** The video session can outlive its Activity; the new host must be able to replay the mask. */
     fun activeIphoneCornerMask(): Triple<AirPlaySession, ByteArray, Int>? {
         val current = currentCornerMask ?: return null
@@ -352,7 +349,6 @@ class CarPlayController(
             uiListener?.onCornerMask(session, png, displayWidth)
         }
         override fun onSessionActive(session: AirPlaySession) {
-            wiredSessionActive = true
             wiredStartWatchdog?.sessionActive()
             if (currentCornerMask?.session !== session) currentCornerMask = null
             val replacement = activeSession !== session
@@ -368,7 +364,7 @@ class CarPlayController(
             }
             activeSession = session
             val btPrefs = appContext.getSharedPreferences("xcertplay_airplay", android.content.Context.MODE_PRIVATE)
-            if (btPrefs.getBoolean("bt_suspend_during_carplay", false)) {
+            if (!airPlayConfig.disableAudioOutput && btPrefs.getBoolean("bt_suspend_during_carplay", false)) {
                 // close() marks [closed], and a closing session marks itself before onSessionEnded
                 // clears it, ahead of each resume; the pause checks all three under resume's lock.
                 BydBluetoothSuspend.suspend(appContext, this@CarPlayController, btSuspendDelayMs(btPrefs),
@@ -699,6 +695,7 @@ class CarPlayController(
                         closeBestEffort("Wi-Fi scan pause") { wifiScanPause?.close() }
                         wifiScanPause = null
                     } else {
+                        closeBestEffort("AirPlay/NCM") { service?.detach() }
                         closeBestEffort("CSM") { csm?.close() }
                         csm = null
                     }
@@ -2000,7 +1997,8 @@ class CarPlayController(
                     Phase.REENUMERATION, Phase.IPHONE -> {
                         val configuration = IphoneCarPlayConfiguration.find(result.device)
                         val carPlayMode = configuration?.let(IphoneCarPlayConfiguration::isCarPlayMode) == true
-                        val sessionAlreadyStarted = WiredSessionMemory.startedOn(result.device.deviceName)
+                        val sessionAlreadyStarted = WiredSessionMemory.startedOn(result.device.deviceName) ||
+                            com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()
                         val action = WiredConfigurationAction.choose(
                             found = configuration != null,
                             carPlayMode = carPlayMode,
@@ -2080,7 +2078,7 @@ class CarPlayController(
         reenumerationAttempts += 1
         connectionDiagnostic("USB transition requested count=$reenumerationAttempts")
         onStatus(CarPlayStatus.SelectingConfiguration)
-        iphoneHost.requestCarPlayReenumerationAsync(device, executor) { transition ->
+        iphoneHost.requestCarPlayReenumerationAsync(device, executor, callback = { transition ->
             when (transition) {
                 IphoneUsbHost.TransitionResult.ReenumerationRequested -> {
                     onStatus(CarPlayStatus.WaitingForReenumeration)
@@ -2098,7 +2096,8 @@ class CarPlayController(
                     fail(transition.error)
                 }
             }
-        }
+        }, restartExistingSession = reenumerationAttempts == 1 &&
+            com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported())
     }
 
     /**
@@ -2108,18 +2107,36 @@ class CarPlayController(
      * which uses the mode it already offers, as before the request.
      */
     private fun watchReenumeration(device: UsbDevice) {
+        val pollMillis = if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported())
+            ELANTRA_REENUMERATION_POLL_INTERVAL_MILLIS else DEVICE_AVAILABILITY_POLL_INTERVAL_MILLIS
         val attempt = reenumerationAttempts
         val generation = availabilityPollGeneration.get()
-        mainHandler.postDelayed({
-            if (closed || phase != Phase.REENUMERATION || attempt != reenumerationAttempts ||
-                generation != availabilityPollGeneration.get()) return@postDelayed
-            // An iPhone that left the bus is still re-enumerating: its attach ends the wait.
-            val listed = iphoneHost.discover().firstOrNull { it.deviceName == device.deviceName } ?: return@postDelayed
-            connectionDiagnostic(
-                "USB transition unanswered after ${REENUMERATION_WAIT_MILLIS}ms count=$attempt; checking the iPhone again",
-            )
-            requestIphonePermission(listed)
-        }, REENUMERATION_WAIT_MILLIS)
+        val started = android.os.SystemClock.elapsedRealtime()
+        val check = object : Runnable {
+            override fun run() {
+                if (closed || phase != Phase.REENUMERATION || attempt != reenumerationAttempts ||
+                    generation != availabilityPollGeneration.get()) return
+                val devices = iphoneHost.discover()
+                val listed = devices.firstOrNull { it.deviceName == device.deviceName } ?: devices.singleOrNull()
+                val sameNode = listed?.deviceName == device.deviceName
+                val elapsed = android.os.SystemClock.elapsedRealtime() - started
+                if (listed == null || (sameNode && elapsed < REENUMERATION_WAIT_MILLIS)) {
+                    // Fast checks are only useful during the expected transition window.
+                    // Do not keep polling an unplugged phone four times a second indefinitely.
+                    mainHandler.postDelayed(this, if (elapsed < REENUMERATION_WAIT_MILLIS)
+                        pollMillis else DEVICE_AVAILABILITY_POLL_INTERVAL_MILLIS)
+                    return
+                }
+                // Accept a replacement node without requiring an attach broadcast. Keep the old
+                // node's settling delay for phones that acknowledge without disappearing.
+                connectionDiagnostic(
+                    "USB transition unanswered after ${elapsed}ms count=$attempt; checking the iPhone again",
+                )
+                availabilityPollGeneration.incrementAndGet()
+                requestIphonePermission(listed)
+            }
+        }
+        mainHandler.postDelayed(check, pollMillis)
     }
 
     private fun onIphoneAttached(device: UsbDevice) {
@@ -2209,37 +2226,43 @@ class CarPlayController(
             )
             onStatus(CarPlayStatus.ConnectingControl)
             val carKitClient = LockdownCarKitClient(mux)
-            // Temporary lab capture, limited to accessory/authentication messages and two minutes.
-            try {
-                val relay = carKitClient.openService(pairRecord, config.label, "com.apple.syslog_relay")
-                Thread({
-                    try {
-                        relay.use {
-                            val deadline = System.nanoTime() + 120_000_000_000L
-                            val pending = StringBuilder()
-                            val relevant = Regex(" (accessoryd|ACCCarPlayService|iap2d|CarPlay)([\\[(])", RegexOption.IGNORE_CASE)
-                            while (!closed && System.nanoTime() < deadline) {
-                                val bytes = relay.recv(8192, 1000) ?: continue
-                                if (bytes.isEmpty()) break
-                                pending.append(bytes.toString(Charsets.UTF_8).replace('\u0000', '\n'))
-                                while (true) {
-                                    val end = pending.indexOf("\n")
-                                    if (end < 0) break
-                                    val line = pending.substring(0, end)
-                                    pending.delete(0, end + 1)
-                                    if (relevant.containsMatchIn(line)) debugLog("PHONE ${line.take(2000)}")
+            // Phone-side capture opens another TLS/Lockdown service before CarKit. Keep that
+            // lab-only overhead out of this car's normal connection and reconnection path.
+            if (!com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) {
+                // Temporary lab capture, limited to accessory/authentication messages and two minutes.
+                try {
+                    val relay = carKitClient.openService(pairRecord, config.label, "com.apple.syslog_relay")
+                    Thread({
+                        try {
+                            relay.use {
+                                val deadline = System.nanoTime() + 120_000_000_000L
+                                val pending = StringBuilder()
+                                val relevant = Regex(" (accessoryd|ACCCarPlayService|iap2d|CarPlay)([\\[(])", RegexOption.IGNORE_CASE)
+                                while (!closed && System.nanoTime() < deadline) {
+                                    val bytes = relay.recv(8192, 1000) ?: continue
+                                    if (bytes.isEmpty()) break
+                                    pending.append(bytes.toString(Charsets.UTF_8).replace('\u0000', '\n'))
+                                    while (true) {
+                                        val end = pending.indexOf("\n")
+                                        if (end < 0) break
+                                        val line = pending.substring(0, end)
+                                        pending.delete(0, end + 1)
+                                        if (relevant.containsMatchIn(line)) debugLog("PHONE ${line.take(2000)}")
+                                    }
+                                    if (pending.length > 65536) pending.clear()
                                 }
-                                if (pending.length > 65536) pending.clear()
                             }
+                            debugLog("phone authentication diagnostic capture ended")
+                        } catch (error: Exception) {
+                            debugLog("phone authentication diagnostic capture ended: ${error.javaClass.simpleName}")
                         }
-                        debugLog("phone authentication diagnostic capture ended")
-                    } catch (error: Exception) {
-                        debugLog("phone authentication diagnostic capture ended: ${error.javaClass.simpleName}")
-                    }
-                }, "carplay-lab-phone-diagnostics").apply { isDaemon = true; start() }
-                debugLog("phone authentication diagnostic capture started")
-            } catch (error: Exception) {
-                debugLog("phone authentication diagnostics unavailable: ${error.message}")
+                    }, "carplay-lab-phone-diagnostics").apply { isDaemon = true; start() }
+                    debugLog("phone authentication diagnostic capture started")
+                } catch (error: Exception) {
+                    debugLog("phone authentication diagnostics unavailable: ${error.message}")
+                }
+            } else {
+                connectionDiagnostic("wired startup: optional phone system log capture skipped")
             }
             val carkit = try {
                 carKitClient.open(pairRecord, config.label)
@@ -2328,8 +2351,6 @@ class CarPlayController(
                 deviceIdentifier = ncmHostMac.macString(),
             )
             onStatus(CarPlayStatus.RunningControl)
-            wiredSessionActive = false
-            wiredStartSentAtNanos = null
             lateinit var startWatchdog: WiredStartWatchdog
             startWatchdog = WiredStartWatchdog(
                 schedule = { delay, action ->
@@ -2364,25 +2385,11 @@ class CarPlayController(
                 vehicleStatusProvider = vehicleStatusProvider,
                 onIncoming = ::onRouteFrame,
                 onProgress = { message ->
-                    if (message == Iap2WiredControlClient.START_SESSION_AGAIN_PROGRESS) {
-                        startWatchdog.startSessionSentAgain()
-                    } else if (message.startsWith(START_SESSION_PROGRESS)) {
-                        if (wiredStartSentAtNanos == null) wiredStartSentAtNanos = System.nanoTime()
+                    if (message.startsWith(START_SESSION_PROGRESS)) {
                         wiredDeviceName?.let(WiredSessionMemory::started)
                         startWatchdog.startSessionSent()
                     }
                     debugLog("wired $message")
-                },
-                startSessionAgain = {
-                    val opened = ncm.linkOpenedAtNanos
-                    WiredStartAgain.decide(
-                        nowNanos = System.nanoTime(),
-                        startSentAtNanos = wiredStartSentAtNanos ?: System.nanoTime(),
-                        linkOpenedAtNanos = opened,
-                        sessionActive = wiredSessionActive,
-                        connectionAttemptSinceLinkOpened =
-                            opened != null && ncm.connectionAttemptSince(endpoint.airPlayPort, opened),
-                    )
                 },
             )
             onStatus(
@@ -3086,10 +3093,14 @@ class CarPlayController(
 
     private fun onStatus(status: CarPlayStatus, generation: Int? = null) {
         if (closed) return
+        val statusAtMillis = android.os.SystemClock.elapsedRealtime()
         mainHandler.post {
             if (!closed && (generation == null || generation == wirelessGeneration.get()) && status != lastReportedStatus) {
                 lastReportedStatus = status
-                connectionDiagnostic("stage=${status.javaClass.simpleName}")
+                val stageMillis = (statusAtMillis - previousStatusAtMillis).coerceAtLeast(0)
+                previousStatusAtMillis = statusAtMillis
+                connectionDiagnostic("stage=${status.javaClass.simpleName} previousStageElapsedMs=$stageMillis " +
+                    "controllerElapsedMs=${(statusAtMillis - controllerStartedAtMillis).coerceAtLeast(0)}")
                 uiListener?.onDebugLog(status.debugLogMessage())
                 uiStatusReporter?.invoke(status)
             }
@@ -3167,6 +3178,7 @@ class CarPlayController(
         private const val PERMISSION_POLL_INTERVAL_MILLIS = 500L
         private const val PERMISSION_POLL_TIMEOUT_MILLIS = 120_000L
         private const val DEVICE_AVAILABILITY_POLL_INTERVAL_MILLIS = 2_000L
+        private const val ELANTRA_REENUMERATION_POLL_INTERVAL_MILLIS = 250L
         private const val WIRELESS_HANDOFF_TIMEOUT_MILLIS = 45_000L
         private const val RFCOMM_CONNECT_TIMEOUT_MILLIS = 15_000L
         private const val MAXIMUM_REENUMERATION_ATTEMPTS = 2

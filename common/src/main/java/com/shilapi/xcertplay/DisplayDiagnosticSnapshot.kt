@@ -9,7 +9,7 @@ import java.util.UUID
 /** Small, redacted snapshot retained separately from the rotating session logs. */
 internal object DisplayDiagnosticSnapshot {
     private const val PREFS = "diplay_display_diagnostics"
-    private val fields = listOf("selection", "request", "capability", "effective", "phone", "decoder", "output")
+    private val fields = listOf("selection", "request", "capability", "effective", "phone", "received", "decoder", "output")
     private fun stamp() = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
 
     @Synchronized
@@ -23,6 +23,7 @@ internal object DisplayDiagnosticSnapshot {
         val attempt = UUID.randomUUID().toString()
         val editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
         fields.filter { it != "selection" }.forEach(editor::remove)
+        editor.remove("received_codec")
         editor.putString("attempt", attempt)
         for ((key, line) in listOf("request" to request, "capability" to capability, "effective" to effective)) {
             DiagnosticRedactor.redact(line)?.let { editor.putString(key, "${stamp()} $it") }
@@ -48,6 +49,20 @@ internal object DisplayDiagnosticSnapshot {
         val safe = DiagnosticRedactor.redact(message) ?: return
         prefs.edit().putString(field, "${stamp()} $safe").apply()
     }
+
+    /** This is read from the received main-screen config, never inferred from the preference. */
+    @Synchronized
+    fun recordReceivedCodec(context: Context, attempt: String?, codec: com.shilapi.xcertplay.airplay.VideoCodec) {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (attempt == null || prefs.getString("attempt", null) != attempt) return
+        val name = if (codec == com.shilapi.xcertplay.airplay.VideoCodec.H265) "HEVC (H.265)" else "H.264"
+        prefs.edit().putString("received", "${stamp()} Received main video codec=$name")
+            .putString("received_codec", name).apply()
+    }
+
+    @Synchronized
+    fun lastReceivedCodec(context: Context): String? =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString("received_codec", null)
 
     @Synchronized
     fun report(context: Context): String {

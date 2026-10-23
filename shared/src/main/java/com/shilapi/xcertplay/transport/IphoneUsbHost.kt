@@ -166,28 +166,41 @@ class IphoneUsbHost(
         device: UsbDevice,
         executor: Executor,
         callback: (TransitionResult) -> Unit,
+        restartExistingSession: Boolean = false,
     ) {
         executor.execute {
-            callback(runTransition(device) { connection ->
-                val response = ByteArray(VENDOR_RESPONSE_LENGTH)
-                val transferred = connection.controlTransfer(
-                    USB_VENDOR_DEVICE_IN,
-                    CARPLAY_CONFIGURATION_REQUEST,
-                    0,
-                    CARPLAY_CONFIGURATION_INDEX,
-                    response,
-                    response.size,
-                    CONTROL_TRANSFER_TIMEOUT_MILLIS,
-                )
-                if (transferred != response.size) {
-                    // iOS 12 and 15 rejected this request even while unlocked (#509, #455); a locked
-                    // iPhone rejects it too (#100). Record what the iPhone exposes to tell them apart.
-                    runCatching { onDiagnostic(modeRejectionDiagnostic(connection, device)) }
-                    throw IphoneUsbException.Protocol(
-                        "CarPlay configuration request transferred $transferred of ${response.size} bytes",
+            callback(runTransition(device) { original ->
+                var connection = original
+                try {
+                    if (restartExistingSession) {
+                        // Select an actual USBMUX-only configuration from this phone's descriptors.
+                        // Dropping NCM ends the previous wired CarPlay link without dropping VBUS.
+                        val ordinary = IphoneCarPlayConfiguration.ordinaryUsbConfiguration(device)
+                        if (ordinary != null) connection = selectConfiguration(connection, device, ordinary)
+                        onDiagnostic("wired reconnect ordinaryUsbConfig=${ordinary?.id} selected=${ordinary != null}")
+                    }
+                    val response = ByteArray(VENDOR_RESPONSE_LENGTH)
+                    val transferred = connection.controlTransfer(
+                        USB_VENDOR_DEVICE_IN,
+                        CARPLAY_CONFIGURATION_REQUEST,
+                        0,
+                        CARPLAY_CONFIGURATION_INDEX,
+                        response,
+                        response.size,
+                        CONTROL_TRANSFER_TIMEOUT_MILLIS,
                     )
+                    if (transferred != response.size) {
+                        // iOS 12 and 15 rejected this request even while unlocked (#509, #455); a locked
+                        // iPhone rejects it too (#100). Record what the iPhone exposes to tell them apart.
+                        runCatching { onDiagnostic(modeRejectionDiagnostic(connection, device)) }
+                        throw IphoneUsbException.Protocol(
+                            "CarPlay configuration request transferred $transferred of ${response.size} bytes",
+                        )
+                    }
+                    TransitionResult.ReenumerationRequested
+                } finally {
+                    if (connection !== original) connection.close()
                 }
-                TransitionResult.ReenumerationRequested
             })
         }
     }

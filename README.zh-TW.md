@@ -1,3 +1,5 @@
+> 本分支為伊蘭特適配 fork；適配範圍與驗證狀態請見[主 README](README.md)。以下保留上游繁體中文說明。
+
 # DiPlay
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md)

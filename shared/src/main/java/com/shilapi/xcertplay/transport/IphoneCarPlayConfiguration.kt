@@ -43,6 +43,12 @@ object IphoneCarPlayConfiguration {
     fun isCarPlayMode(configuration: UsbConfiguration): Boolean =
         usbMuxInterface(configuration) != null && hasCdcNcm(configuration) && hasAppleEthernet(configuration)
 
+    /** Do not assume configuration 1: use the iPhone's descriptors and never select a network function. */
+    fun ordinaryUsbConfiguration(device: UsbDevice): UsbConfiguration? =
+        (0 until device.configurationCount).map(device::getConfiguration).firstOrNull {
+            usbMuxInterface(it) != null && !hasCdcNcm(it) && !hasAppleEthernet(it)
+        }
+
     fun describe(configuration: UsbConfiguration): String =
         (0 until configuration.interfaceCount).joinToString(",") { index ->
             val usbInterface = configuration.getInterface(index)

@@ -2,7 +2,12 @@
 
 本仓库 fork 自 [shihabal3amri/DiPlay](https://github.com/shihabal3amri/DiPlay)，为 **2021 款第七代伊兰特 / Humax BHCN-T3103C / Android 9** 维护有线 CarPlay 适配。
 
-> **伊兰特的源码和完整说明在 [`elantra` 分支](https://github.com/langfree10/DiPlay/tree/elantra)。** `main` 保留上游跟踪代码；本首页用于指引到适配版本。伊兰特实现以已测试的上游 0.2.21 快照为基线，当前正式版本为 **1.0.1**（2026-10-23）。
+## 分支约定
+
+- [`main`](https://github.com/langfree10/DiPlay/tree/main)：稳定主分支，包含已经验证的伊兰特适配，当前正式版本为 **1.0.1**。
+- [`elantra`](https://github.com/langfree10/DiPlay/tree/elantra)：开发分支，后续改动在此开发，验证通过后再合并到 `main`。
+
+适配基线为上游 DiPlay 0.2.21；仓库中的 `upstream` 远程指向原始 DiPlay 项目。
 
 ## 我们做了哪些适配
 
@@ -15,7 +20,7 @@
 - **离线诊断**：可导出到 U 盘／文件夹，适合车机无法联网的情况。
 - **视频参数**：帧率、编码偏好与实际接收格式诊断。
 
-[完整适配清单与使用说明](https://github.com/langfree10/DiPlay/blob/elantra/README.md) · [构建指南](https://github.com/langfree10/DiPlay/blob/elantra/docs/BUILD_ELANTRA.md) · [验证记录](https://github.com/langfree10/DiPlay/blob/elantra/docs/ELANTRA_AUDIO_TEST.md)
+[稳定版源码](https://github.com/langfree10/DiPlay/tree/main) · [构建指南](https://github.com/langfree10/DiPlay/blob/main/docs/BUILD_ELANTRA.md) · [验证记录](https://github.com/langfree10/DiPlay/blob/main/docs/ELANTRA_AUDIO_TEST.md)
 
 ## 验证状态
 
@@ -30,4 +35,4 @@
 
 直接上游为 [DiPlay](https://github.com/shihabal3amri/DiPlay)，接收器基于 [xcertplay](https://github.com/shilapi/xcertplay)，上游界面参考 [DiAuto](https://github.com/shihabal3amri/DiAuto)。保留 [GPL-3.0](LICENSE)、原有 AGPL 标记及[第三方说明](docs/THIRD_PARTY_NOTICES.md)。这是独立维护的适配，现代及 Apple 的名称、图标不代表官方授权或背书。
 
-English: Hyundai Elantra adaptations live on the [elantra branch](https://github.com/langfree10/DiPlay/tree/elantra); main retains upstream tracking code. See that branch for the tested 0.2.21-based source, build instructions, credits and explicit physical-test limitations.
+English: `main` contains the verified stable Hyundai Elantra adaptation (currently 1.0.1); `elantra` is the development branch. Changes are developed on `elantra` and merged into `main` after validation. The adaptation is based on upstream DiPlay 0.2.21.

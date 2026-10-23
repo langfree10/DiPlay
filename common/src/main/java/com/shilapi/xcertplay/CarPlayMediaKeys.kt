@@ -79,6 +79,9 @@ internal object CarPlayMediaKeys {
         }
         appContext = context.applicationContext
         controller = next
+        CarBluetoothDiagnostics.stop()
+        if (AirPlayPersistence.loadCarBluetoothAudio(context) ||
+            com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported()) CarBluetoothDiagnostics.start(context, next)
         GeelyWheelKeys.start(context)
         com.shilapi.xcertplay.media.AmbientMusicController.claimPlaybackOwner(next)
         next.playbackListener = { playing ->
@@ -131,11 +134,10 @@ internal object CarPlayMediaKeys {
                     val previousId = nowPlaying.artworkTransferId
                     if (previousId != null) {
                         ambientColorCache.remove(previousId)
-                        if (previousId != update.artworkTransferId) artworkCache.remove(previousId)
+                        artworkCache.remove(previousId)
                     }
                     if (previousId == update.artworkTransferId) {
-                        // Metadata can arrive after its artwork. Keep the connection's decode token;
-                        // cancelling it here loses a valid in-flight cover for a reused reference.
+                        artworkOwner = artworkQueue.newSession()
                         initialAlbumRecovery = InitialAlbumRecovery()
                     }
                     com.shilapi.xcertplay.media.AmbientMusicController.albumColorChanged(expected,
@@ -145,7 +147,7 @@ internal object CarPlayMediaKeys {
                 if (nowPlaying.elapsedMillis != update.elapsedMillis) elapsedUpdatedAt = SystemClock.elapsedRealtime()
                 val metadataChanged = metadataChanged(nowPlaying, update) || artwork !== previousArtwork
                 nowPlaying = update
-                if (metadataChanged) ClusterMusicState.publish(update, artwork)
+                if (metadataChanged) ClusterMusicState.publish(update, update.artworkTransferId?.let { artworkCache[it] })
                 updateInitialAlbumRecovery(expected)
                 // The iPhone repeats NowPlayingUpdate about twice a second for the position alone.
                 // Republishing the metadata each time sent a copy of the artwork through system_server
@@ -170,13 +172,6 @@ internal object CarPlayMediaKeys {
             decoded?.recycle()
             return
         }
-        // Empty/corrupt transfers are not a request to clear a valid cover. Session teardown
-        // clears the image explicitly. Keep recovery eligible when decoding has failed.
-        if (decoded == null) {
-            Log.i(TAG, "artwork decode failed reference=$id; retaining cover")
-            controller?.let(::updateInitialAlbumRecovery)
-            return
-        }
         artworkCache.remove(id)
         artworkCache[id] = decoded
         ambientColorCache.remove(id)
@@ -196,9 +191,7 @@ internal object CarPlayMediaKeys {
         nowPlaying.artworkTransferId?.let { ambientColorCache.containsKey(it) } == true
 
     private fun albumRecoveryEnabled(): Boolean {
-        val context = appContext ?: return false
-        if (ClusterMusicSettings.enabled(context)) return true
-        val settings = com.shilapi.xcertplay.media.AmbientMusicSettings.load(context)
+        val settings = appContext?.let(com.shilapi.xcertplay.media.AmbientMusicSettings::load) ?: return false
         return settings.enabled && settings.colorSource == com.shilapi.xcertplay.media.AmbientColorSource.ALBUM
     }
 
@@ -287,6 +280,9 @@ internal object CarPlayMediaKeys {
     private fun updateLocked(active: Boolean) {
         val context = appContext ?: return
         if (controller == null) return
+        // AVRCP and volume belong to the OEM Bluetooth player in this mode. A late or
+        // unsolicited CarPlay audio callback must not replace its MediaSession/focus owner.
+        if (AirPlayPersistence.loadCarBluetoothAudio(context)) return
         mediaAudioActive = active
         if (active && session == null) start(context) else if (active) regainFocusLocked()
         publishPlaybackStateLocked()
@@ -373,6 +369,7 @@ internal object CarPlayMediaKeys {
     }
 
     private fun releaseLocked() {
+        CarBluetoothDiagnostics.stop()
         focusOwner = null
         controller?.let(com.shilapi.xcertplay.media.AmbientMusicController::releasePlaybackOwner)
         artworkOwner = null
@@ -426,14 +423,11 @@ internal object CarPlayMediaKeys {
             WheelKeyLog.note("media key $source -> car video player $index")
             return
         }
-        val sent = synchronized(this) { controller }?.sendMediaButton(index) ?: false
-        Log.i(TAG, "media key $source -> CarPlay $index sent=$sent")
-        WheelKeyLog.note("media key $source -> CarPlay $index sent=$sent")
-    }
-
-    private fun notUsed(source: String) {
-        Log.i(TAG, "media key $source not used by CarPlay")
-        WheelKeyLog.note("media key $source not used by CarPlay")
+        val delivery = ElantraTrackCommands.send(synchronized(this) { controller }, index, ElantraTrackRoute.MEDIA_SESSION)
+        val outcome = if (com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported())
+            "delivery=$delivery route=media-session" else "sent=${delivery == ElantraTrackDelivery.SENT}"
+        Log.i(TAG, "media key $source -> CarPlay $index $outcome")
+        WheelKeyLog.note("media key $source -> CarPlay $index $outcome")
     }
 
     /** A steering-wheel media key captured outside the Android key stream (Geely/Lynk). */
@@ -447,7 +441,7 @@ internal object CarPlayMediaKeys {
 
     private val callback = CarPlayMediaCallback(
         experimentalDiLink3Keys = { appContext?.let(BydOutputSettings::carPlayCallControls) == true },
-        notUsed = ::notUsed,
+        elantraKeys = { com.shilapi.xcertplay.media.ElantraAudioCompatibility.supported() },
         send = ::send,
     )
 
@@ -555,24 +549,20 @@ internal object CarPlayMediaKeys {
 /**
  * Media-session input → CarPlay presses. Hardware keys arrive as button events and keep the toggle;
  * media controllers (not hardware keys) call [onPlay] and [onPause] with an explicit intent.
- * A button that is not a CarPlay key goes to [notUsed]: a car that sends its own code for a wheel key
- * then shows that code in the report, instead of looking like a car that sent nothing (#610).
  */
 internal class CarPlayMediaCallback(
     private val experimentalDiLink3Keys: () -> Boolean = { false },
-    private val notUsed: (source: String) -> Unit = {},
+    private val elantraKeys: () -> Boolean = { false },
     private val send: (index: Int, source: String) -> Unit,
 ) : MediaSession.Callback() {
     override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
         @Suppress("DEPRECATION")
         val event = mediaButtonIntent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT) ?: return false
-        val press = event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0
-        val index = CarPlayMediaButton.forKeyCode(event.keyCode, experimentalDiLink3Keys())
-        if (index == null) {
-            if (press) notUsed(KeyEvent.keyCodeToString(event.keyCode))
-            return super.onMediaButtonEvent(mediaButtonIntent)
+        val index = CarPlayMediaButton.forKeyCode(event.keyCode, experimentalDiLink3Keys(), elantraKeys())
+            ?: return super.onMediaButtonEvent(mediaButtonIntent)
+        if (CarPlayMediaButton.sendsOnEvent(event, elantraKeys())) {
+            send(index, KeyEvent.keyCodeToString(event.keyCode))
         }
-        if (press) send(index, KeyEvent.keyCodeToString(event.keyCode))
         return true
     }
 

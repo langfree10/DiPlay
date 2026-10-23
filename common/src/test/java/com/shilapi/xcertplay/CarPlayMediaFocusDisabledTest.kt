@@ -36,16 +36,72 @@ class CarPlayMediaFocusDisabledTest {
     }
 
     @After fun cleanup() {
+        AirPlayPersistence.saveCarBluetoothAudio(app, false)
         controllers.forEach(CarPlayMediaKeys::detach)
         CarPlayBackgroundSession.clear()
         AirPlayPersistence.saveDisableMediaKeyAudioFocus(app, false)
         shadowOf(Looper.getMainLooper()).idle()
     }
 
+    @Test fun elantraDefaultsKeepMediaSessionActiveWithoutTakingTheNativeMusicFocus() {
+        val manufacturer = android.os.Build.MANUFACTURER
+        val model = android.os.Build.MODEL
+        org.robolectric.shadows.ShadowBuild.setManufacturer("humaxdigital")
+        org.robolectric.shadows.ShadowBuild.setModel("BHCN-T3103C")
+        try {
+            assertFalse(AirPlayPersistence.loadCarBluetoothAudio(app))
+            assertFalse(AirPlayPersistence.loadAudioFocusEnabled(app))
+            val session = start(mock(CarPlayController::class.java).also(controllers::add))
+            assertTrue(session.isActive)
+            assertFocusDisabled()
+        } finally {
+            org.robolectric.shadows.ShadowBuild.setManufacturer(manufacturer)
+            org.robolectric.shadows.ShadowBuild.setModel(model)
+        }
+    }
+
+    @Test fun nativeBluetoothFocusCannotSuppressMediaSessionOnlyTrackCommands() {
+        val manufacturer = android.os.Build.MANUFACTURER
+        val model = android.os.Build.MODEL
+        org.robolectric.shadows.ShadowBuild.setManufacturer("humaxdigital")
+        org.robolectric.shadows.ShadowBuild.setModel("BHCN-T3103C")
+        try {
+            AirPlayPersistence.saveCarBluetoothAudio(app, false)
+            val controller = mock(CarPlayController::class.java).also(controllers::add)
+            start(controller)
+            val callback = ReflectionHelpers.getField<CarPlayMediaCallback>(CarPlayMediaKeys, "callback")
+            android.provider.Settings.Global.putInt(app.contentResolver, ElantraVoiceSourceReturn.LAST_MODE, 8)
+            android.provider.Settings.Global.putInt(app.contentResolver, "android.extension.car.BT_AUDIO_FOCUS_STATE", 2)
+            callback.onSkipToNext(); callback.onSkipToPrevious()
+            val event = android.view.KeyEvent(0, 1, android.view.KeyEvent.ACTION_UP, 275, 0)
+            callback.onMediaButtonEvent(android.content.Intent(android.content.Intent.ACTION_MEDIA_BUTTON)
+                .putExtra(android.content.Intent.EXTRA_KEY_EVENT, event))
+            org.mockito.Mockito.verify(controller, org.mockito.Mockito.times(2)).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT)
+            org.mockito.Mockito.verify(controller).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.PREVIOUS)
+            android.provider.Settings.Global.putInt(app.contentResolver, ElantraVoiceSourceReturn.LAST_MODE, 6)
+            callback.onSkipToNext()
+            org.mockito.Mockito.verify(controller, org.mockito.Mockito.times(3)).sendMediaButton(com.shilapi.xcertplay.airplay.CarPlayMediaButton.NEXT)
+        } finally {
+            org.robolectric.shadows.ShadowBuild.setManufacturer(manufacturer)
+            org.robolectric.shadows.ShadowBuild.setModel(model)
+        }
+    }
+
     @Test fun mediaAudioCreatesActiveSessionWithoutFocusRequest() {
         val session = start(mock(CarPlayController::class.java).also(controllers::add))
 
         assertTrue(session.isActive)
+        assertFocusDisabled()
+    }
+
+    @Test fun bluetoothAudioNeverCreatesALocalMediaSessionOrFocusRequest() {
+        AirPlayPersistence.saveCarBluetoothAudio(app, true)
+        val controller = mock(CarPlayController::class.java).also(controllers::add)
+        `when`(controller.nowPlayingSnapshot()).thenReturn(CarPlayNowPlaying())
+        CarPlayMediaKeys.attach(app, controller)
+        CarPlayMediaKeys.onMediaAudioChanged(true)
+        shadowOf(Looper.getMainLooper()).idle()
+        assertNull(currentSession())
         assertFocusDisabled()
     }
 

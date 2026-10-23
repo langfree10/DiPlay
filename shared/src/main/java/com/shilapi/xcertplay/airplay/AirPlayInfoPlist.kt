@@ -26,7 +26,7 @@ object AirPlayInfoPlist {
 
     /** Discovery and /info must describe the same receiver capabilities. */
     fun features(config: AirPlayConfig): Long =
-        if (config.disableAudioOutput) CARPLAY_FEATURES_NO_AUDIO else CARPLAY_FEATURES
+        if (!config.hasAudioOutput) CARPLAY_FEATURES_NO_AUDIO else CARPLAY_FEATURES
 
     fun build(config: AirPlayConfig): Map<String, Any?> {
         val displays = arrayListOf<Any?>(
@@ -46,12 +46,15 @@ object AirPlayInfoPlist {
             "rightHandDrive" to config.rightHandDrive,
             "keepAliveLowPower" to false,
             "keepAliveSendStatsAsBody" to false,
-            "modes" to modes(),
+            "modes" to modes(audioEnabled = config.hasAudioOutput),
         )
-        if (!config.disableAudioOutput) {
-            info["audioLatencies"] = audioLatencies()
-            info["audioFormats"] = audioFormats(config.entertainmentSampleRate, config.microphone, config.mainBufferedAudio, config.microphoneOpus,
-                config.speechWithout8And16Khz)
+        if (config.hasAudioOutput) {
+            val voiceOnly = config.disableAudioOutput && config.bluetoothVoiceAudio
+            info["audioLatencies"] = audioLatencies().filter { !voiceOnly || it["audioType"] in BLUETOOTH_VOICE_TYPES }
+            info["audioFormats"] = audioFormats(config.entertainmentSampleRate, config.microphone,
+                config.bufferedAudioOutputEnabled, config.microphoneOpus, config.speechWithout8And16Khz,
+                config.promptPcm48KhzOnly)
+                .filter { !voiceOnly || it["audioType"] in BLUETOOTH_VOICE_TYPES }
         }
         info["extendedFeatures"] = listOf("vocoderInfo", "enhancedRequestCarUI")
         info["displays"] = displays
@@ -93,8 +96,11 @@ object AirPlayInfoPlist {
         "unborrowConstraint" to CONSTRAINT_ANYTIME,
     )
 
-    private fun modes(): Map<String, Any?> = linkedMapOf(
-        "resources" to listOf(resource(RESOURCE_SCREEN), resource(RESOURCE_AUDIO)),
+    private fun modes(audioEnabled: Boolean): Map<String, Any?> = linkedMapOf(
+        "resources" to buildList {
+            add(resource(RESOURCE_SCREEN))
+            if (audioEnabled) add(resource(RESOURCE_AUDIO))
+        },
         "appStates" to listOf(
             linkedMapOf("appStateID" to 2, "state" to false),
             linkedMapOf("appStateID" to 1, "speechMode" to -1),
@@ -125,6 +131,7 @@ object AirPlayInfoPlist {
         mainBuffered: Boolean = false,
         microphoneOpus: Boolean = true,
         speechWithout8And16Khz: Boolean = false,
+        promptPcm48KhzOnly: Boolean = false,
     ): List<Map<String, Any?>> {
         fun format(type: Int, audioType: String, outputFormats: Int, inputFormats: Int? = null): Map<String, Any?> {
             val entry = linkedMapOf<String, Any?>(
@@ -143,6 +150,8 @@ object AirPlayInfoPlist {
         val speech = if (speechWithout8And16Khz) pcm and 0x3c.inv() else pcm
         val pcmMono = 0x154 or (if (is48) 0x4000 else 0x400)
         val opus = 0x70000000
+        // PCM 48 kHz mono/stereo only: leaving Opus here would still allow a 16/24 kHz clock.
+        val promptOutput = if (promptPcm48KhzOnly) 0xc000 else speech or opus
         val aacLc = if (is48) 0x800000 else 0x400000
         val pcmInput = if (microphone) pcmMono else null
         // Retain Opus whenever platform or bundled software encoding is usable. PCM-only wireless
@@ -152,12 +161,12 @@ object AirPlayInfoPlist {
         return listOf(
             format(100, "compatibility", pcm, pcmInput),
             format(101, "compatibility", pcm),
-            format(100, "default", speech or opus, wirelessInput),
-            format(100, "alert", speech or opus),
+            format(100, "default", promptOutput, wirelessInput),
+            format(100, "alert", promptOutput),
             format(100, "media", pcm),
             format(100, "telephony", pcmMono or opus, wirelessInput),
             format(100, "speechRecognition", pcmMono or opus, wirelessInput),
-            format(101, "default", speech or opus),
+            format(101, "default", promptOutput),
             format(102, "media", aacLc),
         ) + if (mainBuffered) {
             // The buffered music stream; the iPhone (iOS 27) opened it only with AAC-LC, not PCM or ALAC.
